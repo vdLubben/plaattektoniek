@@ -1,0 +1,3444 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Plaatgrens Lab - Plaattektoniek 3D (De Geo)</title>
+  <meta name="viewport-fit-sides" content="cover">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:wght@600;800&display=swap">
+  <style>
+  /* Layout: 3D-scène volledig scherm, didactische lesfasen, bedieningsbalk onderaan, optiepaneel rechts */
+  :root{
+    --bg:#e8eef1; --sky-top:#c9dfeb; --sky-bot:#eef2f4;
+    --panel:rgba(251,252,253,.92); --fg:#13212a; --muted:#4f626d; --line:rgba(19,33,42,.16);
+    --accent:#d1401c; --accent-ink:#ffffff; --sea:#0b7885; --focus:#1b5bd1; --chip:rgba(19,33,42,.06);
+    --font-display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
+    --font-body:"Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --bg:#0e1519; --sky-top:#14222b; --sky-bot:#0c1317;
+    --panel:rgba(18,26,31,.92); --fg:#e7eff3; --muted:#9db0ba; --line:rgba(231,239,243,.18);
+    --accent:#ff6a3d; --accent-ink:#1a0a05; --sea:#47c4d2; --focus:#8bb6ff; --chip:rgba(231,239,243,.08);color-scheme:dark}}
+  :root[data-theme="dark"]{
+    --bg:#0e1519; --sky-top:#14222b; --sky-bot:#0c1317;
+    --panel:rgba(18,26,31,.92); --fg:#e7eff3; --muted:#9db0ba; --line:rgba(231,239,243,.18);
+    --accent:#ff6a3d; --accent-ink:#1a0a05; --sea:#47c4d2; --focus:#8bb6ff; --chip:rgba(231,239,243,.08);color-scheme:dark}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{background:linear-gradient(var(--sky-top),var(--sky-bot)) var(--bg);color:var(--fg);font:15px/1.45 var(--font-body);
+    overflow:hidden;padding-block:0;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .app{position:relative;height:100%;min-width:0}
+  #gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+  #gl:active{cursor:grabbing}
+  button{font:inherit;color:inherit;cursor:pointer}
+  :focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+  .title{position:absolute;left:0;top:14px;pointer-events:none;max-width:min(440px,60%)}
+  .title h1{margin:0;font:800 clamp(22px,3.2vw,34px)/1.05 var(--font-display);letter-spacing:-.01em;text-wrap:balance}
+  .title p{margin:4px 0 0;color:var(--muted)}
+  .panel{position:absolute;right:0;top:14px;width:270px;max-height:calc(100% - 170px);overflow:auto;background:var(--panel);
+    border:1px solid var(--line);border-radius:14px;padding:12px 14px;backdrop-filter:blur(8px);display:flex;flex-direction:column;gap:14px;z-index:6}
+  .panel h2{margin:0 0 6px;font:600 12px/1 var(--font-display);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+  .seg{display:flex;flex-wrap:wrap;gap:6px}
+  .seg button,.chip{border:1px solid var(--line);background:var(--chip);border-radius:9px;padding:7px 10px;min-height:36px}
+  .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:transparent;font-weight:700}
+  .seg button:disabled{opacity:.5;cursor:not-allowed}
+  .row{display:flex;align-items:center;gap:10px}
+  .row label{flex:0 0 auto;font-size:13px;color:var(--muted);white-space:nowrap}
+  .row input[type=range]{flex:1 1 auto;width:auto;min-width:0;accent-color:var(--accent);margin:0}
+  input[type=range]{width:100%;accent-color:var(--accent);min-height:28px}
+  .toggle{display:flex;align-items:center;gap:10px;min-height:32px}
+  .toggle input{width:20px;height:20px;accent-color:var(--accent)}
+  .hint{margin:4px 0 0;color:var(--muted);font-size:13px}
+  
+  /* HUD & Stressmeter */
+  .hud{position:absolute;left:0;bottom:148px;width:min(340px,calc(100% - 300px));display:flex;flex-direction:column;gap:8px;pointer-events:none;z-index:3}
+  .caption{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;backdrop-filter:blur(8px)}
+  .caption b{display:block;font:600 12px/1 var(--font-display);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+  .stress{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 12px}
+  .stress .lbl{display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}
+  .meter{height:10px;border-radius:6px;background:var(--chip);margin-top:6px;overflow:hidden}
+  .meter i{display:block;height:100%;width:0;background:var(--accent);border-radius:6px;transition:width 0.1s}
+
+  /* Didactische Lesfasen Knoppen (1, 2, 3, 4) */
+  .phases-container{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(max(14px,env(safe-area-inset-bottom,0px)) + 74px);
+    display:flex;gap:10px;z-index:5;pointer-events:auto;justify-content:center}
+  .phase-btn{width:38px;height:38px;border-radius:50%;background:var(--panel);border:1px solid var(--line);
+    backdrop-filter:blur(10px);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;
+    font:700 15px/1 var(--font-display);color:var(--muted);
+    transition:all 0.15s cubic-bezier(0.2,0,0,1);box-shadow:0 3px 10px rgba(0,0,0,0.08)}
+  .phase-btn:hover{background:var(--chip);border-color:var(--accent);color:var(--fg);transform:translateY(-1px)}
+  .phase-btn[aria-pressed="true"]{background:var(--accent);border-color:transparent;color:#ffffff;box-shadow:0 4px 14px rgba(209,64,28,0.4);font-weight:800}
+
+  /* Hoofdbedieningsbalk onderaan */
+  .bar{position:absolute;left:50%;transform:translateX(-50%);bottom:max(14px,env(safe-area-inset-bottom,0px));width:min(780px,100%);
+    background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:10px 14px;backdrop-filter:blur(8px);
+    display:grid;grid-template-columns:auto 1fr auto;gap:8px 16px;align-items:center;z-index:5}
+  .transport{display:flex;gap:8px;align-items:center}
+  .ib{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--chip);display:grid;place-items:center}
+  .ib.play{width:56px;height:44px;background:var(--accent);color:var(--accent-ink);border-color:transparent}
+  .ib svg{width:22px;height:22px;fill:currentColor}
+  .tl{min-width:0}
+  .tl .ends{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:-2px}
+  .speed{display:flex;align-items:center;gap:8px;min-width:150px}
+  .speed output{min-width:3.2em;text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+  
+  /* Speurtocht Knop in Header */
+  .quest-btn{position:absolute;right:286px;top:14px;min-height:44px;padding:0 16px;border-radius:12px;border:1.5px solid var(--accent);
+    background:var(--panel);color:var(--accent);font:700 14px/1 var(--font-display);letter-spacing:.02em;display:flex;align-items:center;gap:8px;
+    cursor:pointer;z-index:7;transition:all .2s ease;box-shadow:0 4px 14px rgba(209,64,28,0.15);backdrop-filter:blur(8px)}
+  .quest-btn:hover,.quest-btn[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);box-shadow:0 6px 18px rgba(209,64,28,0.35)}
+  .quest-btn .q-icon{font-size:16px;line-height:1}
+
+  /* Infokaart & Speurtocht Paneel */
+  .info{position:absolute;left:0;top:96px;width:min(360px,calc(100% - 300px));max-height:calc(100% - 320px);overflow-y:auto;background:var(--panel);
+    border:1px solid var(--line);border-radius:16px;padding:14px 16px;backdrop-filter:blur(10px);z-index:8;box-shadow:0 8px 24px rgba(0,0,0,0.12);transition:max-height .25s ease}
+  .info-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .info .tag{display:inline-block;font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--accent);font-weight:700}
+  .info-btns{display:flex;gap:4px}
+  .info-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--chip);font-size:16px;line-height:1;display:grid;place-items:center}
+  .info-btn:hover{background:var(--line);color:var(--fg)}
+  .info h3{margin:2px 0 8px;font:800 21px/1.15 var(--font-display);text-wrap:balance}
+  
+  /* 3 Didactische Tabbladen */
+  .tabs{display:flex;gap:3px;margin:8px 0 10px;border-bottom:1px solid var(--line);padding-bottom:1px}
+  .tab-btn{background:none;border:0;border-bottom:3px solid transparent;padding:6px 9px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;border-radius:4px 4px 0 0}
+  .tab-btn:hover{color:var(--fg)}
+  .tab-btn[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+  .tab-content{min-height:70px;font-size:14.5px;line-height:1.45}
+  .tab-content p{margin:0 0 8px}
+  .fact-box{background:var(--chip);border-left:3px solid var(--sea);padding:9px 12px;border-radius:0 8px 8px 0;margin:4px 0;color:var(--fg)}
+  .fact-box b{color:var(--sea);display:block;margin-bottom:3px;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+  .q-box{background:var(--chip);border-left:3px solid var(--accent);padding:9px 12px;border-radius:0 8px 8px 0;margin:4px 0;color:var(--fg)}
+  .q-box b{color:var(--accent);display:block;margin-bottom:3px;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+  
+  .info-nav{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+  .nav-btn{background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:5px 12px;font-size:12.5px;font-weight:700}
+  .nav-btn:hover{background:var(--line);border-color:var(--muted)}
+  .nav-counter{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+  
+  /* Inklappen van infokaart */
+  .info.min{max-height:56px;overflow:hidden;padding:10px 14px}
+  .info.min .tabs,.info.min .tab-content,.info.min .info-nav,.info.min .q-options,.info.min .q-progress{display:none!important}
+  .info.min h3{margin-bottom:0;font-size:16px}
+
+  /* Speurtocht Componenten */
+  .q-progress{display:flex;gap:5px;margin:4px 0 10px}
+  .q-progress i{flex:1;height:5px;border-radius:3px;background:var(--line);transition:background .2s}
+  .q-progress i.done{background:var(--accent)}
+  .q-progress i.cur{background:var(--fg)}
+  .rtti-badge{display:inline-block;font:700 11px/1 var(--font-display);letter-spacing:.08em;padding:3px 8px;border-radius:4px;background:var(--chip);color:var(--accent);margin-bottom:6px;border:1px solid var(--line)}
+  .q-task{font-weight:700;margin-bottom:6px}
+  .q-hintline{color:var(--muted);font-size:13.5px;margin:4px 0 10px}
+  .q-options{display:flex;flex-direction:column;gap:8px;margin:12px 0}
+  .q-opt{text-align:left;background:var(--chip);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font:inherit;font-size:14px;line-height:1.35;cursor:pointer;transition:all .15s ease}
+  .q-opt:hover:not(:disabled){border-color:var(--accent);background:var(--panel)}
+  .q-opt:disabled{cursor:default}
+  .q-opt.wrong{border-color:#dc2626;background:rgba(220,38,38,0.08);opacity:.85}
+  .q-opt.right{border-color:#16a34a;background:rgba(22,163,74,0.12);font-weight:700}
+  .q-fb{padding:10px 12px;border-radius:8px;margin:8px 0 12px;font-size:13.5px;line-height:1.4}
+  .q-fb.good{background:rgba(22,163,74,0.12);border-left:4px solid #16a34a;color:var(--fg)}
+  .q-fb.bad{background:rgba(220,38,38,0.1);border-left:4px solid #dc2626;color:var(--fg)}
+  .q-btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:10px;padding:9px 15px;font-weight:700;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(209,64,28,0.2)}
+  .q-btn.ghost{background:none;border:1px solid var(--line);color:var(--fg);box-shadow:none}
+  .q-btn.ghost:hover{border-color:var(--accent)}
+  .q-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
+  .q-textarea{width:100%;min-height:90px;background:var(--chip);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:10px;font:inherit;font-size:14px;resize:vertical;margin:8px 0}
+  .score-box{font:800 36px/1 var(--font-display);color:var(--accent);margin:6px 0 8px;font-variant-numeric:tabular-nums}
+  .q-link{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:13px;padding:0}
+
+  /* Genummerde Stippen & Labels in 3D */
+  #labels{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:2}
+  .pin{position:absolute;left:0;top:0;display:flex;align-items:center;gap:6px;background:none;border:0;padding:2px;
+    cursor:pointer;pointer-events:auto;will-change:transform;transition:transform 0.15s ease}
+  .pin .dot{flex:none;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--accent-ink);
+    border:2px solid var(--panel);box-shadow:0 2px 8px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;
+    font:700 12px/1 var(--font-display);transition:all 0.15s ease}
+  .pin .lbl{background:var(--panel);border:1px solid var(--line);padding:4px 10px;border-radius:8px;font-size:12.5px;font-weight:700;
+    color:var(--fg);white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.18);backdrop-filter:blur(6px);transition:all 0.15s ease}
+  
+  /* Stippen modus: alleen nummers, naam toont bij hover/klik */
+  .lab-stip .pin .lbl{display:none}
+  .lab-stip .pin:hover .lbl,.lab-stip .pin:focus-visible .lbl,.lab-stip .pin.on .lbl{display:inline-block}
+  .pin:hover .dot,.pin.on .dot{transform:scale(1.2);box-shadow:0 0 0 3px rgba(209,64,28,0.4)}
+  .pin.on .lbl{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+
+  /* Speurtocht zoekmodus (A, B, C, D) */
+  .quest-find .pin .lbl{display:none!important}
+  .quest-find .pin .dot{width:32px;height:32px;font-size:15px;font-weight:800;border-width:3px;box-shadow:0 4px 14px rgba(0,0,0,0.3)}
+  .quest-find .pin:hover .dot{transform:scale(1.25);background:var(--fg);color:var(--bg)}
+  .pin.miss .dot{background:#dc2626!important;color:#fff!important;animation:shake .45s ease}
+  .pin.right .dot{background:#16a34a!important;color:#fff!important;transform:scale(1.25);box-shadow:0 0 0 5px rgba(22,163,74,0.4)}
+  @keyframes shake{
+    0%,100%{transform:translateX(0)}
+    20%,60%{transform:translateX(-5px)}
+    40%,80%{transform:translateX(5px)}
+  }
+  
+  .toast{position:absolute;left:50%;top:18px;transform:translateX(-50%);background:var(--accent);color:var(--accent-ink);border-radius:12px;
+    padding:10px 16px;font-weight:700;pointer-events:none;opacity:0;transition:opacity .25s;max-width:92%;text-align:center;z-index:15}
+  .toast.on{opacity:1}
+  .optbtn{display:none;position:absolute;right:0;top:14px;min-height:44px;padding:0 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel);z-index:7}
+  
+  @media (max-width:860px){
+    .optbtn{display:block}
+    .quest-btn{right:80px;padding:0 12px}
+    .quest-btn span:not(.q-icon){display:none}
+    .panel{display:none;top:66px;max-height:calc(100% - 220px)}
+    .panel.open{display:flex}
+    .title{max-width:calc(100% - 150px)}
+    .phases-container{bottom:calc(max(14px,env(safe-area-inset-bottom,0px)) + 120px)}
+    .phase-btn{width:36px;height:36px}
+    .hud{width:100%;bottom:210px}
+    .info{top:auto;bottom:260px;width:100%;max-height:38%}
+    .bar{grid-template-columns:1fr;gap:6px}
+    .speed{min-width:0}
+    .caption{font-size:14px}
+  }
+  @media (prefers-reduced-motion:reduce){.toast{transition:none}}
+  </style>
+</head>
+<body>
+<main class="app lab-stip" id="app">
+  <canvas id="gl" aria-label="3D-model van een subductiezone"></canvas>
+  <div id="labels"></div>
+
+  <header class="title">
+    <h1 id="ttl">Subductiezone</h1>
+    <p id="sub">Een oceanische plaat duikt onder een continent</p>
+  </header>
+  <button class="quest-btn" id="bQuest" aria-pressed="false" title="Start interactieve didactische Speurtocht">
+    <span class="q-icon">🎯</span>
+    <span>Speurtocht</span>
+  </button>
+  <button class="optbtn" id="optbtn" aria-expanded="false" aria-controls="panel">Opties</button>
+
+  <aside class="panel" id="panel" aria-label="Opties">
+    <section>
+      <h2>Platen</h2>
+      <div class="seg" id="scn">
+        <button type="button" data-scn="cont" aria-pressed="true">Oceaan en continent</button>
+        <button type="button" data-scn="ocean" aria-pressed="false">Oceaan en oceaan</button>
+        <button type="button" data-scn="col" aria-pressed="false">Continent en continent</button>
+        <button type="button" data-scn="div" aria-pressed="false">Divergent (uit elkaar)</button>
+        <button type="button" data-scn="trans" aria-pressed="false">Transform (langs elkaar)</button>
+      </div>
+    </section>
+    <section>
+      <h2>Kijkrichting</h2>
+      <div class="seg" id="views">
+        <button type="button" data-view="cross">Doorsnede</button>
+        <button type="button" data-view="angle" aria-pressed="true">Schuin</button>
+        <button type="button" data-view="top">Bovenaf</button>
+        <button type="button" data-view="zoom">Inzoomen</button>
+      </div>
+      <p class="hint">Sleep om te draaien. Houd <b>A</b> (of rechtermuisknop) ingedrukt en schuif om het model te verplaatsen. Scroll om te zoomen.</p>
+    </section>
+    <section>
+      <h2>Snijvlak</h2>
+      <div class="row"><label for="cut">Voor</label><input id="cut" type="range" min="-100" max="100" value="0"><label for="cut">Achter</label></div>
+      <p class="hint">Schuif het snijvlak door de aarde heen. In het midden ziet u de vulkaan van binnen.</p>
+    </section>
+    <section>
+      <h2>Tonen</h2>
+      <label class="toggle"><input type="checkbox" id="t-water" checked> Water</label>
+      <label class="toggle"><input type="checkbox" id="t-quake" checked> Aardbevingen</label>
+      <label class="toggle"><input type="checkbox" id="t-magma" checked> Magma</label>
+      <label class="toggle"><input type="checkbox" id="t-arrows" checked> Bewegingspijlen</label>
+    </section>
+    <section>
+      <h2>Begrippen &amp; Labels</h2>
+      <div class="seg" id="labStyle" style="margin-bottom:6px">
+        <button type="button" data-style="stip" aria-pressed="true">Stippen</button>
+        <button type="button" data-style="naam" aria-pressed="false">Namen</button>
+        <button type="button" data-style="uit" aria-pressed="false">Uit</button>
+      </div>
+      <div class="seg" id="lvl">
+        <button type="button" data-lvl="1" aria-pressed="true">Basis (1)</button>
+        <button type="button" data-lvl="2" aria-pressed="false">Alle (2)</button>
+      </div>
+    </section>
+  </aside>
+
+  <aside class="info" id="info" hidden aria-live="polite">
+    <div class="info-head">
+      <span class="tag" id="infoTag"></span>
+      <div class="info-btns">
+        <button type="button" class="info-btn" id="infoMin" title="Inklappen / Uitklappen" aria-label="Inklappen">–</button>
+        <button type="button" class="info-btn" id="infoClose" title="Sluiten" aria-label="Sluit uitleg">×</button>
+      </div>
+    </div>
+    <h3 id="infoTitle"></h3>
+    <div id="infoBody"></div>
+  </aside>
+
+  <div class="hud">
+    <div class="caption"><b>Wat gebeurt er nu?</b><span id="cap"></span></div>
+    <div class="stress"><div class="lbl"><span>Spanning in de plaatgrens</span><span id="quakeTxt">Nog geen beving</span></div><div class="meter"><i id="meter"></i></div></div>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <!-- Didactische Lesfasen (Scaffolding voor Digibord: 1, 2, 3, 4) -->
+  <div class="phases-container" id="phasesContainer">
+    <button type="button" class="phase-btn" data-phase="0" aria-pressed="true" aria-label="Fase 1: Nadering">1</button>
+    <button type="button" class="phase-btn" data-phase="1" aria-pressed="false" aria-label="Fase 2: Trogvorming">2</button>
+    <button type="button" class="phase-btn" data-phase="2" aria-pressed="false" aria-label="Fase 3: Smeltzone &amp; Vulkaan">3</button>
+    <button type="button" class="phase-btn" data-phase="3" aria-pressed="false" aria-label="Fase 4: Breuk &amp; Beving">4</button>
+  </div>
+
+  <!-- Hoofdbesturing -->
+  <div class="bar">
+    <div class="transport">
+      <button class="ib" id="bReset" aria-label="Terug naar begin"><svg viewBox="0 0 24 24"><path d="M12 5V2L7 6.5 12 11V8a5 5 0 1 1-5 5H5a7 7 0 1 0 7-8z"/></svg></button>
+      <button class="ib" id="bBack" aria-label="Stap terug"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zM9.5 12 18 18V6z"/></svg></button>
+      <button class="ib play" id="bPlay" aria-label="Afspelen"><svg viewBox="0 0 24 24" id="playIcon"><path d="M8 5v14l11-7z"/></svg></button>
+      <button class="ib" id="bFwd" aria-label="Stap vooruit"><svg viewBox="0 0 24 24"><path d="M16 6h2v12h-2zM14.5 12 6 6v12z"/></svg></button>
+    </div>
+    <div class="tl">
+      <input id="tl" type="range" min="0" max="1000" value="0" aria-label="Tijdlijn">
+      <div class="ends"><span>Begin</span><span id="phase"></span><span>Einde</span></div>
+    </div>
+    <div class="speed"><label for="spd">Snelheid</label><input id="spd" type="range" min="0" max="100" value="50" style="width:90px"><output id="spdOut">1×</output></div>
+  </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+const T=window.THREE;
+const ZB=-7,X0=-11,NX=220,DX=0.1,YBOT=-8,NZ=40,DUR=60,XV=7.2,MW=21.9,MH=6.85;
+const S={p:0,tt:0,playing:false,speed:1,right:'cont',cutV:0,zf:0,stress:0,shake:0,lvl:1,water:true,quake:true,magma:true,arrows:true,erupt:0,dirty:true};
+
+/* ---------- wiskundige hulpjes ---------- */
+const hash=(x,y)=>{const h=Math.sin(x*127.1+y*311.7)*43758.5453;return h-Math.floor(h)};
+function vnoise(x,y){const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi,u=xf*xf*(3-2*xf),v=yf*yf*(3-2*yf);
+  const a=hash(xi,yi),b=hash(xi+1,yi),c=hash(xi,yi+1),d=hash(xi+1,yi+1);return a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v}
+const fbm=(x,y)=>vnoise(x,y)*0.6+vnoise(x*2.1,y*2.1)*0.28+vnoise(x*4.3,y*4.3)*0.12;
+const ss=(a,b,x)=>{const t=Math.min(1,Math.max(0,(x-a)/(b-a)));return t*t*(3-2*t)};
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+
+/* ---------- het profiel van de aarde ---------- */
+// Punt van de overrijdende continentale wig (accretiewig-teen / trogas)
+const CONT_TIP = -1.6;
+// Vloeiende, realistische diepe V-vormige trogbuiging van de duikende plaat:
+function slabTop(x) {
+  // 1. Diepte van de oceaantrog verdiept dynamisch met de subductievoortgang S.p:
+  //    Bij p = 0: een zachte, vlakke beginsituatie (zeebodem op y = -0.85).
+  //    Naarmate subductie vordert (p -> 0.70) diept de trog dynamisch uit tot y = -2.05 (abyss, >10 km diep!).
+  const trenchDrop = 0.15 + 1.05 * ss(0.04, 0.65, S.p);
+  const xTrench = CONT_TIP; // -1.6
+
+  if (x <= -5.2) return -0.85;
+
+  if (x < xTrench) {
+    const u = (x - (-5.2)) / (xTrench - (-5.2)); // [0, 1] van diepzee naar trogas
+    // Buigingsrug (outer rise): alleen zichtbaar zodra tektonische buigspanning actief is (p > 0.15)!
+    // In de beginsituatie (p = 0) is er GEEN opbolling en ligt de zeebodem strak en vlak:
+    const outerRise = 0.035 * ss(0.15, 0.50, S.p) * Math.sin(u * Math.PI) * Math.pow(1.0 - u, 0.85);
+    // Vloeiende neerwaartse flexie naar de dieptrog toe:
+    const bend = Math.pow(u, 2.3);
+    return -0.85 + outerRise - trenchDrop * bend;
+  }
+
+  // Onder de overrijdende plaat: zachte, realistische duikhoek (~26 graden) diep de mantel in:
+  const dx = x - xTrench;
+  const yTrench = -0.85 - trenchDrop;
+  const slope = 0.46;
+  const trans = 1.0 - Math.exp(-dx / 1.5);
+  return yTrench - slope * dx * trans - 0.12 * trans;
+}
+// De oceanische plaat begint in de startpositie reeds netjes in de subductiezone (tot x = 2.5),
+// waardoor de leegte onder de overrijdende plaat naadloos wordt opgevuld met oceanische plaat.
+const xTip=()=>Math.min(9.9, 2.5 + 7.4*S.p);
+
+// CONTINENTALE BOTSING (MET OEROCEAAN IN BEGINSITUATIE, SEDIMENTVERSTENIGING & VISFOSSIELEN OP BERGTOPPEN)
+function colTop(x, z) {
+  const colDist = Math.abs(x);
+  const mountainZone = ss(4.2, 0.0, colDist);
+  const folds = Math.sin(x * 2.2) * 0.45 + Math.cos(z * 1.5) * 0.25 + (fbm(x * 2.0, z * 2.0) - 0.45) * 0.5;
+  const baseLand = 0.20 + 0.03 * Math.sin(x * 0.6 + z * 0.4);
+
+  // Oeroceaan (Tethyszee) exact gecentreerd tussen x = -2.5 en x = +2.5 in de beginsituatie (p < 0.35)
+  // Zeebodem op y = -0.75 met mariene sedimenten en vis-/zeeleven.
+  // Naarmate de platen naderen (p -> 0.35) sluit de oceaan en perst de tektonische druk het sediment omhoog:
+  const inBasin = ss(-2.5, -1.8, x) * (1.0 - ss(1.8, 2.5, x));
+  const oceanBed = -0.75 + 0.04 * Math.sin(x * 3.0 + z);
+  const basinClosure = ss(0.0, 0.35, S.p);
+  const floorElevation = oceanBed * (1.0 - basinClosure) + baseLand * basinClosure;
+  const surfaceBase = inBasin > 0 ? (baseLand * (1.0 - inBasin) + floorElevation * inBasin) : baseLand;
+
+  return surfaceBase + S.p * (2.0 * mountainZone + Math.max(0, folds * mountainZone));
+}
+
+function colMoho(x, z, top) {
+  const colDist = Math.abs(x);
+  const rootFactor = ss(4.2, 0.0, colDist);
+  // In het begin onder het gecentreerde oceaanbekken iets dunnere korst (-1.15), onder het gebergte een diepe wortel tot -2.70:
+  const inBasin = ss(-2.5, -1.8, x) * (1.0 - ss(1.8, 2.5, x)) * (1.0 - ss(0.0, 0.35, S.p));
+  const baseMoho = -1.30 + inBasin * 0.15;
+  return baseMoho - 1.40 * rootFactor * S.p;
+}
+
+function colBase(x) {
+  const colDist = Math.abs(x);
+  const rootFactor = ss(4.4, 0.0, colDist);
+  const baseLith = -3.20;
+  const undulations = 0.12 * Math.sin(x * 2.0);
+  // De lithosfeerbasis wordt diep de mantel in geduwd (omgekeerd gebergte / lithosfeerwortel) tot y = -5.00.
+  // Hierdoor blijft de lithosfeer overal dik en krachtig en buigt synchroon met de korstwortel omlaag!
+  return baseLith - S.p * (1.80 * rootFactor + Math.max(0, undulations * rootFactor));
+}
+
+// Zeebodemhoogte of landoppervlak (bij botsing):
+function seaTop(x, z) {
+  if (S.right === 'col') return colTop(x, z);
+  if (S.right === 'div') return divTop(x, z);
+  if (S.right === 'trans') return transTop(x, z);
+  return slabTop(x);
+}
+
+// Gedeelde plaatgrens-positie (seam tussen linker- en rechtermesh)
+const boundaryX = () => (S.right === 'div' || S.right === 'trans') ? 0.0 : CONT_TIP;
+
+/* ==================== DIVERGENTE PLAATGRENS (EXPANDERENDE OCEAAN MET CONTINENTEN LINKS & RECHTS) ==================== */
+function getDivCoast(p) {
+  // In de beginsituatie (p = 0) liggen de continenten dicht bij elkaar (smalle rift van 4.8 breed).
+  // Naarmate de platen wijken (p -> 1) drijven de continenten naar links en rechts weg en wordt de oceaan 16.0 breed!
+  return 2.4 + 5.6 * p;
+}
+
+function divTop(x, z) {
+  const dist = Math.abs(x);
+  const coastX = getDivCoast(S.p);
+
+  // 1. CONTINENTAAL LAND (DROOG LAND BUITEN DE EXPANDERENDE OCEAAN):
+  if (dist > coastX) {
+    const landDist = dist - coastX;
+    // Zandstrand stijgt op vanaf zeeniveau, gevolgd door kustheuvels:
+    const beach = 0.08 + 0.32 * ss(0.0, 0.9, landDist);
+    const hills = 0.22 * Math.sin(x * 0.7 + z * 0.5) + 0.12 * Math.cos(x * 1.4 - z * 0.6);
+    return beach + Math.max(0, hills);
+  }
+
+  // 2. EXPANDEREND OCEAANBEKKEN:
+  // Continentaal plat (shelf) daalt vanaf het strand (-0.10) naar de abyssale diepzeebodem (-1.55):
+  const shelfWidth = Math.min(1.4, coastX * 0.35);
+  const shelfDist = coastX - dist;
+  const shelfDrop = ss(0.0, shelfWidth, shelfDist);
+  const abyssalFloor = -1.55;
+  const shelfY = -0.10 + (abyssalFloor - (-0.10)) * shelfDrop;
+
+  // Mid-oceanische rug in het midden:
+  const ridgeElev = Math.exp(-Math.pow(dist / 3.8, 1.4)) * 0.85;
+  const riftValley = Math.exp(-Math.pow(dist / 0.65, 2.0)) * 0.38;
+  const terraces = 0.035 * Math.sin(dist * 3.8) + 0.02 * fbm(x * 2.5, z * 2.5);
+  const neoRidge = Math.exp(-Math.pow(dist / 0.20, 2.0)) * 0.10;
+  const ridgeY = abyssalFloor + ridgeElev - riftValley + neoRidge + terraces;
+
+  const ridgeWeight = ss(0.4, 1.6, shelfDist);
+  return shelfY * (1.0 - ridgeWeight) + ridgeY * ridgeWeight;
+}
+
+function divMoho(x, z, top) {
+  const dist = Math.abs(x);
+  const coastX = getDivCoast(S.p);
+  if (dist > coastX) {
+    // Dikke continentale korst onder het land (~35 km)
+    const landDist = dist - coastX;
+    return -1.35 - 0.30 * ss(0.0, 1.2, landDist);
+  }
+  // Dunne oceanische basaltkorst onder de oceaan (~7 km)
+  const shelfDist = coastX - dist;
+  const trans = ss(0.0, 1.2, shelfDist);
+  const contMoho = -1.35;
+  const oceanMoho = top - 0.28;
+  return contMoho * (1.0 - trans) + oceanMoho * trans;
+}
+
+function divBase(x) {
+  // REIKT ALTIJD TOT y = -2.35 OM DE HOLTE ONDER DE PLAAT VOLLEDIG OP TE VULLEN!
+  // Sluit naadloos en massief aan op de mantel (mFront op y = -2.15).
+  // Geen enkele holte of kier meer: 100% gevuld met heet magma en asthenosfeer!
+  return -2.35;
+}
+
+/* ==================== TRANSFORME PLAATGRENS (SAN ANDREAS-TYPE MET HUISJES OP HET OPPERVLAK) ==================== */
+function transTop(x, z) {
+  const isLeft = x < 0;
+  // Horizontale strike-slip verschuiving langs de breuklijn x = 0:
+  const shift = (isLeft ? 1 : -1) * (0.15 + 1.25 * S.p);
+  const zEff = z + shift;
+
+  // Glooiend landschap met duidelijke breukvallei:
+  const hills = 0.35 + 0.18 * Math.sin(x * 0.7 + zEff * 0.5) + 0.10 * Math.cos(x * 1.3 - zEff * 0.7);
+
+  // Breukvallei op x = 0:
+  const faultDist = Math.abs(x);
+  const faultTrough = Math.exp(-Math.pow(faultDist / 0.35, 2.0)) * 0.24;
+
+  // Duidelijke breuktrap (fault scarp) langs de breuklijn:
+  const scarp = (isLeft ? 0.10 : -0.10) * Math.exp(-Math.pow(faultDist / 0.50, 2.0));
+
+  return hills - faultTrough + scarp;
+}
+
+function transMoho(x, z, top) {
+  return top - 1.55; // continentale korst (~35 km)
+}
+
+function transBase(x) {
+  return -3.60; // stabiele continentale lithosfeer
+}
+
+// Natuurlijke meanderende kustlijn: scheidt de voorlandzee (forearc) van het vasteland
+function getCoastX(z){
+  if(S.right !== 'cont') return 5.80 + 0.35*Math.sin(z*0.65 + 0.8) + 0.18*Math.cos(z*1.4);
+  return 2.20 + 0.38*Math.sin(z*0.68 + 1.2) + 0.22*Math.cos(z*1.5 - 0.4) + 0.10*Math.sin(z*2.8);
+}
+
+// ECHTE STRATOVULKAAN (Twee duidelijk gescheiden vulkaankegels met een brede, lage vallei/kustvlakte ertussen)
+const VOLC=[[0,1.0],[-4.0,0.70]];
+function volcH(x,z){
+  if(S.right === 'col' || S.right === 'div' || S.right === 'trans') return 0;
+  // 1. Subtiele pre-eruptieve opbolling door opstijgend magma (Fase 3: 0.50 <= S.p < 0.70)
+  const swellPh = ss(0.50, 0.68, S.p) * (1.0 - 0.75 * ss(0.68, 0.90, S.p));
+  let swell = 0;
+  if(swellPh > 0){
+    const dCone = Math.hypot(x - XV, z * 0.85);
+    swell = 0.20 * swellPh * Math.exp(-Math.pow(dCone / 2.2, 2));
+  }
+
+  // 2. Groei van de stratovulkaankegel (Fase 4: S.p >= 0.65 tot 0.95 - de vulkaan groeit pas in de late fase)
+  const ph = ss(0.65, 0.95, S.p);
+  if(ph <= 0) return swell;
+
+  let maxCone = 0;
+  for(const v of VOLC){
+    const dx=x-XV;
+    const dz=z-v[0];
+    const r=Math.hypot(dx,dz);
+    
+    // Dimensies van de stratovulkaan op de vulkanische boog (XV = 7.2):
+    // R_base afgestemd zodat de vulkanen niet samensmelten tot één massieve bergrug, maar een lage vallei ertussen houden:
+    const R_base=1.85*Math.sqrt(v[1]); 
+    const R_rim=0.60*Math.sqrt(v[1]);
+    const H_volc=1.85*v[1]*(S.right==='cont'?1.0:1.15);
+    const D_crater=0.45*v[1];
+
+    if(r<R_base){
+      let hCone=0;
+      if(r<R_rim){
+        const uCrater = r / R_rim;
+        const craterFloor = H_volc - D_crater * (1.0 - Math.pow(uCrater, 2.0));
+        hCone = craterFloor;
+      } else {
+        const u = (r - R_rim) / (R_base - R_rim);
+        const flank = Math.pow(1.0 - u, 1.6);
+        const angle = Math.atan2(dz, dx);
+        const ribs = 0.03 * Math.cos(angle * 6) * (1.0 - u);
+        hCone = H_volc * flank + ribs;
+      }
+      if(hCone > maxCone) maxCone = hCone;
+    }
+  }
+  return swell * (1.0 - ph) + ph * maxCone;
+}
+
+// REALISTISCH VOORLANDBEKKEN (FOREARC), PLOOIINGSGEBERTE & VULKANISCHE BOOG
+function rightTop(x, z) {
+  if (S.right === 'col') return colTop(x, z);
+  if (S.right === 'div') return divTop(x, z);
+  if (S.right === 'trans') return transTop(x, z);
+  let y;
+  const coastX=getCoastX(z);
+
+  if(S.right==='cont'){
+    if(x < coastX){
+      // ONDERZEES CONTINENTAAL PLAT & ACCRETIEWIG (van de trogas CONT_TIP tot de kustlijn coastX):
+      // Sluit exact en naadloos aan op de duikende plaat en stijgt monotoon naar -0.15 net vóór het strand
+      const t = clamp((x - CONT_TIP) / (coastX - CONT_TIP), 0, 1);
+      const yToe = slabTop(CONT_TIP); // Exact op de bodem van de dieptrog
+      
+      // Accretiewig: lichte sedimentwelving die toeneemt naarmate subductie vordert
+      const wedgeProgress = ss(0.12, 0.50, S.p);
+      const wedgeRidge = 0.06 * wedgeProgress * Math.sin(t * Math.PI) * ss(0.10, 0.90, t);
+      
+      // Continentale plaat buigt vloeiend naar beneden af richting de trog (zoals in het UU-diagram):
+      // Een zuiver monotone flexiekromme (t^1.5) zorgt dat de plaat naar de trog afbuigt,
+      // ZONDER rare kuilen, valleitjes of knikken in de beginsituatie of tijdens de beweging!
+      const tt = Math.pow(t, 1.5);
+      y = yToe * (1.0 - tt) + (-0.15) * tt + wedgeRidge;
+    } else {
+      const distFromCoast = x - coastX;
+      // 1. STRAND & VOORLANDBEKKEN: stijgt vloeiend en monotoon van -0.15 (onder water) naar +0.25 (droog land)
+      //    Hierdoor balanceert het strand nooit precies op zeeniveau (y = 0) -> geen Z-fighting met het water
+      y = -0.15 + 0.40 * ss(0, 0.9, distFromCoast);
+
+      // 2. PLOOIINGSGEBERTE (MAIN CORDILLERA / FOLD BELT, x ca. 4.4 - 6.4):
+      const foldZone = ss(1.6, 2.3, distFromCoast) * (1 - ss(3.8, 4.6, distFromCoast));
+      const mainFold = Math.sin((distFromCoast - 1.8) * 1.55);
+      const subFold = 0.28 * Math.sin((distFromCoast - 1.8) * 3.6 + z * 0.45);
+      const ridges = (fbm(x * 1.5 + 2, z * 1.2) - 0.45) * 0.32;
+      
+      const mountain = Math.max(0, mainFold * 0.75 + subFold + ridges);
+      y += S.p * 0.95 * mountain * foldZone;
+
+      // 3. ACHTERLANDPLATEAU / ALTIPLANO (distFromCoast > 4.2, x > 6.7)
+      y += 0.24 * ss(4.2, 7.2, distFromCoast);
+    }
+  } else {
+    // EILANDENBOOG SCENARIO: diepzee met een langgerekt groen eiland rond XV = 7.2
+    const yToe = slabTop(CONT_TIP);
+    if (x < 2.8) {
+      // Troghelling vanaf de dieptrog naar de zeebodem met zuivere, soepele neerwaartse buiging
+      const t = clamp((x - CONT_TIP) / (2.8 - CONT_TIP), 0, 1);
+      const tt = Math.pow(t, 1.4);
+      y = yToe * (1.0 - tt) + (-0.85) * tt;
+    } else {
+      // Normale zeebodem rondom het eiland (onder water)
+      const seaFloor = -0.85;
+
+      // Eilandrug over de X-as gecentreerd op de vulkanische boog (XV = 7.2)
+      const dxIsland = x - XV;
+      const widthFactor = Math.exp(-Math.pow(dxIsland / 1.6, 2.0));
+
+      // Laag gelegen land (+0.12 tot +0.22 boven zeeniveau) met glooiende zandstranden:
+      // De hoogte is bescheiden genoeg zodat een tsunamigolf van ~0.35 er prachtig overheen spoelt!
+      const islandElevation = 0.18 + 0.06 * Math.sin(z * 0.9 + 1.2);
+      
+      // Z-tapering zodat het eiland omringd is door water en niet tegen de voorwand (z -> S.zf = 2.5) plakt:
+      const zTaper = ss(2.4, 1.2, z) * ss(-6.0, -4.8, z);
+
+      // Meng de diepe zeebodem geleidelijk naar het lage eilandland
+      y = seaFloor + (islandElevation - seaFloor) * widthFactor * zTaper * ss(0.25, 0.60, S.p);
+    }
+  }
+
+  // Voeg de vulkanen toe bovenop het eiland
+  y += volcH(x, z);
+
+  return Math.max(y, slabTop(x));
+}
+
+// Breukvlak & lithosfeerbasis (LAB):
+function rBase(x){
+  if(S.right === 'col') return colBase(x);
+  if(S.right === 'div') return divBase(x);
+  if(S.right === 'trans') return transBase(x);
+  if(x <= CONT_TIP) return slabTop(x);
+  const tip = xTip();
+  // Continentale lithosfeer reikt aanzienlijk dieper in de mantel (y = -4.8, ~140 km) voor een dikke, stabiele continentale plaat:
+  const baseMantle = S.right === 'cont' ? (-4.8 + 0.15 * Math.sin(x * 1.3)) : -2.3;
+  if(x <= tip){
+    return Math.max(slabTop(x), baseMantle);
+  }
+  // Vloeiende overgang vanaf de plaattip naar de normale lithosfeerbasis
+  const blend = ss(tip, tip + 2.0, x);
+  const tipY = Math.max(slabTop(tip), baseMantle);
+  return tipY * (1 - blend) + baseMantle * blend;
+}
+
+// MOHO-GRENSVLAK: Continentale korst met geleidelijke verdunning naar de wigteen toe
+function rCrustBot(x, z, top){
+  if(S.right === 'col') return colMoho(x, z, top);
+  if(S.right === 'div') return divMoho(x, z, top);
+  if(S.right === 'trans') return transMoho(x, z, top);
+  if(S.right !== 'cont') {
+    // In ocean/eilandenboog scenario: korstdikte van de bovenliggende plaat is ca. 0.32 tot 0.55 onder de eilanden.
+    // ALTIJD begrensd onder top zodat bot nooit boven top komt (voorkomt omgekeerde driehoek glitch):
+    const taper = clamp((x - CONT_TIP) / 1.8, 0, 1);
+    const islandThick = 0.45 * Math.exp(-Math.pow((x - XV) / 2.2, 2));
+    const crustThick = (0.32 + islandThick) * taper;
+    return Math.min(top, Math.max(top - crustThick, rBase(x)));
+  }
+  // Dikkere continentale korst (visueel ~35-50 km, y tot -2.6 en diepere gebergtewortel tot -3.6):
+  const taper = clamp((x - CONT_TIP) / 2.6, 0, 1);
+  const thick = (2.40 + 1.20 * S.p * Math.exp(-Math.pow((x - 6.0) / 1.8, 2))) * Math.pow(taper, 1.05);
+  return Math.min(top, Math.max(top - thick, rBase(x)));
+}
+const surfY=(x,z)=>x<boundaryX()?seaTop(x,z):rightTop(x,z);
+
+/* ==================== KLEURFUNCTIES VOOR DIVERGENT EN TRANSFORM ==================== */
+function cfDivOcean(x, u, t, f, o) {
+  const dist = Math.abs(x);
+  const coastX = getDivCoast(S.p);
+
+  if (dist > coastX) {
+    // Continentale korst op de wegdrijvende continenten:
+    mixc(K.gr1, K.gr2, t, o);
+    const layers = 0.94 + 0.12 * Math.sin(t * 14.0);
+    o[0] *= layers; o[1] *= layers; o[2] *= layers;
+    return;
+  }
+
+  // In het centrum van de riftslenk: vers heet magma
+  if (dist < 0.35) {
+    const glow = 1.0 - dist / 0.35;
+    const hotR = 0.98, hotG = 0.42 + 0.30 * Math.sin(S.tt * 4.0), hotB = 0.15;
+    mixc(K.bas1, [hotR, hotG, hotB], glow * 0.85, o);
+    return;
+  }
+
+  // Jonge oceanische basaltkorst met toplaagje marien sediment
+  if (t < 0.20) {
+    const sedThick = clamp((dist - 1.2) / 4.5, 0, 1);
+    const sedCol = rgb('#c8ba96');
+    mixc(sedCol, K.bas2, (t / 0.20) * (1.0 - sedThick * 0.5), o);
+  } else {
+    mixc(K.bas1, K.bas2, t, o);
+  }
+  const m = 1 - 0.15 * t;
+  o[0] *= m; o[1] *= m; o[2] *= m;
+}
+
+function cfDivLith(x, u, t, f, o) {
+  const dist = Math.abs(x);
+  const coastX = getDivCoast(S.p);
+
+  if (dist > coastX) {
+    // Vaste continentale lithosfeermantel onder het land:
+    mixc(K.clit1, K.clit2, t, o);
+    const layers = 0.92 + 0.12 * Math.sin(t * 10.0);
+    o[0] *= layers; o[1] *= layers; o[2] *= layers;
+    return;
+  }
+
+  // Onder de centrale rug: DE HOLTE IS VOLLEDIG GEVULD MET HEET OPRIJZEND MAGMA!
+  if (dist < 2.5) {
+    const upwell = (1.0 - dist / 2.5);
+    const hotMagma = [0.98, 0.44, 0.12]; // Gloeiend oranjerood
+    const yellowCore = [1.0, 0.68, 0.22]; // Heet geeloranje
+    const pulse = 0.92 + 0.08 * Math.sin(S.tt * 4.0 + dist * 2.0);
+    const heat = upwell * (1.0 - t * 0.30) * pulse;
+
+    mixc(K.oli1, hotMagma, upwell * 0.92, o);
+    mixc(o, yellowCore, Math.pow(heat, 1.6) * 0.70, o);
+    return;
+  }
+
+  // Flanken: afkoelende oceanische lithosfeer
+  mixc(K.oli1, K.oli2, t, o);
+  const n = 0.9 + 0.2 * vnoise(x * 1.4, t * 3.0);
+  o[0] *= n; o[1] *= n; o[2] *= n;
+}
+
+function divSeaColor(x, y, z, o) {
+  const dist = Math.abs(x);
+  const coastX = getDivCoast(S.p);
+
+  if (dist > coastX) {
+    // DROOG CONTINENTAAL LAND:
+    const landDist = dist - coastX;
+    if (landDist < 0.28) {
+      // Zandstrand aan de kustlijn:
+      const sand = rgb('#d4c59a');
+      mixc(sand, rgb('#b8a576'), landDist / 0.28, o);
+      return;
+    }
+    // Groen heuvellandschap:
+    const n = fbm(x * 1.4, z * 1.4);
+    const grass = rgb('#4d7c0f');
+    const rock = rgb('#78716c');
+    mixc(grass, rock, n * 0.45, o);
+    const rough = 0.92 + 0.16 * vnoise(x * 8.0, z * 8.0);
+    o[0] *= rough; o[1] *= rough; o[2] *= rough;
+    return;
+  }
+
+  // OCEAANBODEM:
+  if (dist < 0.32) {
+    const glow = (1.0 - dist / 0.32) * (0.85 + 0.15 * Math.sin(S.tt * 5.0));
+    mixc(rgb('#111827'), rgb('#ea580c'), glow * 0.90, o);
+    return;
+  }
+  const magPattern = Math.sin(dist * 2.8 - S.p * 2.2);
+  const isNormal = magPattern > 0;
+  const baseRock = isNormal ? rgb('#1e242b') : rgb('#334155');
+  const sedFactor = clamp((dist - 1.2) / 5.0, 0, 0.70);
+  const sedCol = rgb('#a89f8b');
+  mixc(baseRock, sedCol, sedFactor, o);
+  const pillow = 0.88 + 0.24 * vnoise(x * 12.0, z * 12.0);
+  o[0] *= pillow; o[1] *= pillow; o[2] *= pillow;
+}
+
+function cfTransCrust(x, u, t, f, o) {
+  mixc(K.gr1, K.gr2, t, o);
+  const layers = 0.92 + 0.16 * Math.sin(t * 14.0);
+  o[0] *= layers; o[1] *= layers; o[2] *= layers;
+  const dist = Math.abs(x);
+  if (dist < 0.45) {
+    const gouge = (1.0 - dist / 0.45);
+    const darkGouge = rgb('#262626');
+    mixc(o, darkGouge, gouge * 0.75, o);
+  }
+}
+
+function transLandColor(x, y, z, o) {
+  const isLeft = x < 0;
+  const shift = (isLeft ? 1 : -1) * (0.15 + 1.25 * S.p);
+  const zEff = z + shift;
+
+  // 1. BREUKSPOOR & BREUKTRAP OP x = 0 (GEOLOGISCHE SCHUURZONE / BREUKKLOOF)
+  const faultDist = Math.abs(x);
+  if (faultDist < 0.28) {
+    // Donker vergruisd breukgesteente (myloniet / cataclasiet) en schaduw in de breukspleet
+    const gouge = faultDist / 0.28;
+    const darkGouge = rgb('#382e25');
+    const scarpRock = rgb('#574b3d');
+    mixc(darkGouge, scarpRock, gouge, o);
+    const rough = 0.88 + 0.24 * vnoise(x * 14.0, z * 14.0);
+    o[0] *= rough; o[1] *= rough; o[2] *= rough;
+    return;
+  }
+
+  // 2. REALISTISCH CALIFORNISCH GLOOIEND HEUVELLANDSCHAP (SAN ANDREAS / CARRIZO PLAIN)
+  // Natuurlijke aardetinten: zonovergoten gouden steppegras, zandsteenrichels en droge chaparral
+  const n1 = fbm(x * 0.45 + 1.2, zEff * 0.45);
+  const n2 = vnoise(x * 1.8 - 0.5, zEff * 1.8);
+
+  const cGoldGrass = rgb('#c7b382'); // Zonverdroogd goudgeel steppegras
+  const cWarmTan   = rgb('#b89d6e'); // Droge zandige leem
+  const cSageScrub = rgb('#7d8763'); // Olijfgrijze chaparral / alsemstruiken in dalen
+  const cRidgeSand = rgb('#d9caa5'); // Lichte zandsteenontsluiting op heuveltoppen
+
+  // Hoogte- en hellinggebaseerde natuurlijke kleuring:
+  const hillHeight = y;
+  let baseColor = [0, 0, 0];
+  if (hillHeight > 0.40) {
+    mixc(cGoldGrass, cRidgeSand, clamp((hillHeight - 0.40) / 0.30, 0, 1), baseColor);
+  } else {
+    mixc(cWarmTan, cGoldGrass, clamp(hillHeight / 0.40, 0, 1), baseColor);
+  }
+
+  // Struikgewas in de valleien en lagere delen:
+  if (n1 > 0.52) {
+    const scrubFactor = clamp((n1 - 0.52) / 0.35, 0, 1);
+    mixc(baseColor, cSageScrub, scrubFactor * 0.70, baseColor);
+  }
+
+  // Micro-textuur van aarde en gesteente (geen wazige blur, maar fijne korrel):
+  const grain = 0.94 + 0.12 * n2;
+  o[0] = baseColor[0] * grain;
+  o[1] = baseColor[1] * grain;
+  o[2] = baseColor[2] * grain;
+}
+
+/* ---------- GEOLOGISCHE KLEUREN (GEEN BLAUWE KORST!) ---------- */
+const rgb=h=>{const c=new T.Color(h);return[c.r,c.g,c.b]};
+const mixc=(a,b,t,o)=>{o[0]=a[0]+(b[0]-a[0])*t;o[1]=a[1]+(b[1]-a[1])*t;o[2]=a[2]+(b[2]-a[2])*t};
+const K={
+  // ECHTE BASALT- EN SEDIMENTKLEUREN VOOR OCEANISCHE KORST:
+  bas1:rgb('#1b2126'),     // Dicht donker basalt (antraciet)
+  bas2:rgb('#2d363e'),     // Donker basaltisch vulkanisch gesteente
+  sed: rgb('#7d7566'),     // Marien sedimentlaagje bovenop basalt
+  
+  // LITHOSFEERMANTEL:
+  oli1: rgb('#423326'),    // Warm donkerbruin
+  oli2: rgb('#2e2218'),    // Diep donkerbruin/koffiebruin
+  
+  // CONTINENTALE KORST (GRANIET & SEDIMENT):
+  gr1:rgb('#bd9d78'),      // Licht graniet
+  gr2:rgb('#9a7a5c'),      // Gelaagd graniet
+  clit1: rgb('#4a3b2c'),   // Continentale lithosfeer donkerbruin
+  clit2: rgb('#33271c'),
+
+  // ACCRETIEWIG (AFGESCHRAAPTE MARIENE SEDIMENTEN):
+  wed1:rgb('#c8ad7f'),     // Geel/lichtbruin zandsteen
+  wed2:rgb('#8f896b'),     // Donkerder schalie / kleisteen
+  wed3:rgb('#dfc698'),     // Marien siltsteen / chert
+
+  // STRATOVULKAAN STRATA (WISSELENDE AS- EN LAVALAGEN):
+  strataAsh:rgb('#2a2624'),  // Donkere andesitische as en tefra
+  strataLava:rgb('#944933'), // Gestolde andesiet/daciet lavastroom
+  strataTuff:rgb('#635548'), // Vulkanische tuf / agglomeraten
+  
+  // LANDSCHAP, ROTS & SNEEUW:
+  deep:rgb('#5f5d58'), sand:rgb('#bca574'), green:rgb('#4d7537'),
+  brown:rgb('#735b42'), rock:rgb('#727478'), snow:rgb('#edf2f7'),
+  
+  // ZEEBODEM & VULKANISCHE AS:
+  sea1:rgb('#1f2429'), sea2:rgb('#2b333c'), // Donkere mariene basalt-/sedimenttint
+  ash:rgb('#272422'), cinder:rgb('#3e352e'),
+  lava:rgb('#ff5a1f'), m1:rgb('#e48b2c'), m2:rgb('#8f2212')
+};
+const tc=[0,0,0];
+let offO=0,offC=0;
+
+// Oceanische korst: duidelijk donker basaltgesteente met dun toplaagje marien sediment
+function cfOcean(x,u,t,f,o){
+  if(S.right === 'col'){
+    // In het botsingsscenario: oceanisch materiaal ligt in de beginsituatie in het bekken,
+    // en na de botsing uitsluitend als dekblad op de bergtop (t < 0.16):
+    const colDist = Math.abs(x);
+    const isOcean = (S.p < 0.35 && colDist < 2.5) || (S.p >= 0.35 && colDist < 1.4 && t < 0.16);
+    if (isOcean) {
+      if (t < 0.10) {
+        mixc(rgb('#d6c59b'), rgb('#a69570'), t / 0.10, o); // zandkleurig marien sediment
+      } else {
+        const ot = clamp((t - 0.10) / 0.90, 0, 1);
+        const g = 0.65 - ot * 0.40;
+        o[0] = g * 0.95; o[1] = g; o[2] = g * 1.05; // grijze oceanische korst
+      }
+      return;
+    }
+    // Continentale korst op de naderende linkerplaat: graniet en sediment met plooiingsgelaagdheid
+    mixc(K.gr1,K.gr2,t,o);
+    const folds=0.94+0.12*Math.sin(t*16.0 + Math.sin(x*1.5)*2.0);
+    o[0]*=folds;o[1]*=folds;o[2]*=folds;
+    return;
+  }
+  if(t < 0.22){
+    // Bovenste 22% is een zichtbaar laagje diepzeesediment (klei/slib)
+    mixc(K.sed, K.bas2, t/0.22, o);
+  } else {
+    // De rest is massief basalt met geologische textuur
+    const s=ss(0.35,0.65,0.5+0.5*Math.sin((u-offO)*2.6));
+    mixc(K.bas1,K.bas2,s,o);
+  }
+  const m=1-0.18*t;o[0]*=m;o[1]*=m;o[2]*=m;
+
+  // Thermische vervaging en assimilatie van de duikende plaattip in de hete asthenosfeer:
+  const curTip = xTip();
+  if (x > curTip - 2.8) {
+    const uFade = clamp((x - (curTip - 2.8)) / 2.8, 0, 1);
+    const depthFrac = clamp((-slabTop(x) - 2.0) / 2.5, 0, 1);
+    const pFade = 0.55 + 0.45 * ss(0.40, 0.85, S.p);
+    const totalFade = Math.pow(uFade, 0.80) * depthFrac * pFade;
+    if (totalFade > 0.01) {
+      const mantleD = clamp((-2.15 - slabTop(x)) / MH, 0, 1);
+      const mCol = [0, 0, 0];
+      mixc(K.m1, K.m2, mantleD, mCol);
+      const mn = 0.82 + 0.36 * fbm(x * 0.32 + S.tt * 0.02, slabTop(x) * 0.45 - S.tt * 0.015);
+      mCol[0] *= mn; mCol[1] *= mn; mCol[2] *= mn;
+      mixc(o, mCol, Math.min(0.97, totalFade * 1.08), o);
+    }
+  }
+}
+
+function cfOLith(x,u,t,f,o){
+  if(S.right === 'col'){
+    cfCLith(x,u,t,f,o);
+    return;
+  }
+  mixc(K.oli1,K.oli2,t,o);
+  const n=0.9+0.2*vnoise((u-offO)*1.4,t*3);
+  o[0]*=n;o[1]*=n;o[2]*=n;
+
+  // Thermische vervaging van de lithosfeerbasis naar de hete asthenosfeer:
+  const curTip = xTip();
+  if (x > curTip - 2.8) {
+    const uFade = clamp((x - (curTip - 2.8)) / 2.8, 0, 1);
+    const depthFrac = clamp((-slabTop(x) - 2.0) / 2.5, 0, 1);
+    const pFade = 0.55 + 0.45 * ss(0.40, 0.85, S.p);
+    const totalFade = Math.pow(uFade, 0.80) * depthFrac * pFade;
+    if (totalFade > 0.01) {
+      const mantleD = clamp((-2.15 - slabTop(x)) / MH, 0, 1);
+      const mCol = [0, 0, 0];
+      mixc(K.m1, K.m2, mantleD, mCol);
+      const mn = 0.82 + 0.36 * fbm(x * 0.32 + S.tt * 0.02, slabTop(x) * 0.45 - S.tt * 0.015);
+      mCol[0] *= mn; mCol[1] *= mn; mCol[2] *= mn;
+      mixc(o, mCol, Math.min(0.97, totalFade * 1.08), o);
+    }
+  }
+}
+
+function cfCont(x, u, t, f, o) {
+  if (S.right === 'ocean') {
+    // Vulkanisch eilandgesteente (andesiet, tefra, tufsteen) i.p.v. diepzwart basalt:
+    const islandRock1 = rgb('#786b5e'); // warm grijs-bruin andesiet
+    const islandRock2 = rgb('#4a4037'); // gelaagde vulkanische as/tuf
+    mixc(islandRock1, islandRock2, t, o);
+    const layers = 0.94 + 0.10 * Math.sin(t * 14.0);
+    o[0] *= layers; o[1] *= layers; o[2] *= layers;
+    return;
+  }
+  if (S.right === 'col') {
+    const colDist = Math.abs(x);
+    const isOcean = (S.p < 0.35 && colDist < 2.5) || (S.p >= 0.35 && colDist < 1.4 && t < 0.16);
+    if (isOcean) {
+      if (t < 0.10) {
+        mixc(rgb('#d6c59b'), rgb('#a69570'), t / 0.10, o); // zandkleurig marien sediment
+      } else {
+        const ot = clamp((t - 0.10) / 0.90, 0, 1);
+        const g = 0.65 - ot * 0.40;
+        o[0] = g * 0.95; o[1] = g; o[2] = g * 1.05; // grijze oceanische korst
+      }
+      return;
+    }
+    // Intense plooiingslagen in het Himalaya plooiingsmassief
+    mixc(K.gr1, K.gr2, t, o);
+    const folds = 0.94 + 0.12 * Math.sin(t * 16.0 + Math.sin(x * 1.5) * 2.0);
+    o[0] *= folds; o[1] *= folds; o[2] *= folds;
+    return;
+  }
+  mixc(K.gr1, K.gr2, t, o);
+  const layers = 0.94 + 0.12 * Math.sin(t * 16.0);
+  o[0] *= layers; o[1] *= layers; o[2] *= layers;
+}
+
+function cfCLith(x,u,t,f,o){
+  mixc(K.clit1,K.clit2,t,o);
+  const layers = 0.92 + 0.12 * Math.sin(t * 10.0);
+  o[0] *= layers; o[1] *= layers; o[2] *= layers;
+}
+
+// Zeebodem (donker marien basaltgesteente en sediment)
+function seaColor(x,y,z,o){
+  if (S.right === 'col') {
+    // In het oeroceaanbekken bij continentale botsing:
+    // Zeebodem met zandig marien sediment en grijze tinten:
+    const n = fbm(x * 3.0, z * 3.0);
+    const sandMarine = rgb('#cfbf97');
+    const greyMarine = rgb('#63686e');
+    mixc(sandMarine, greyMarine, n, o);
+    const stipple = 0.90 + 0.20 * vnoise(x * 16.0, z * 16.0);
+    o[0] *= stipple; o[1] *= stipple; o[2] *= stipple;
+    return;
+  }
+  const n1=fbm(x*2.2,z*2.2);
+  const n2=vnoise(x*6.0,z*6.0)*0.16;
+  mixc(K.sea1,K.sea2,n1+n2,o);
+  const sedimentGrain=0.95+0.10*vnoise(x*12.0,z*12.0);
+  o[0]*=sedimentGrain;o[1]*=sedimentGrain;o[2]*=sedimentGrain;
+
+  // DYNAMISCHE TROGKLEUR: HOE DIEPER DE TROG, HOE DONKERDER DE KLEUR WORDT!
+  // Bij p = 0 ligt de zeebodem vlak (-0.85) -> normale lichte zeebodemkleur.
+  // Naarmate de trog dieper wordt (tot y = -2.05), verandert de kleur dynamisch naar gitzwart/diepzee-antraciet:
+  const depthDrop = Math.max(0, -0.85 - y); // 0 op de normale vlakke zeebodem, tot 1.20 in de diepste trog
+  const depthFactor = clamp(depthDrop / 1.15, 0, 1); // 0.0 tot 1.0 naarmate de trog dieper insnijdt
+  const trenchDist = Math.abs(x - CONT_TIP);
+  const trenchZone = Math.max(0, 1.0 - trenchDist / 2.8);
+  const dynamicTrenchDark = Math.pow(depthFactor, 0.70) * trenchZone;
+  if(dynamicTrenchDark > 0.005){
+    const abyss = rgb('#010205'); // Diepste abyssale trogkleur: intens nachtzwart/antraciet
+    mixc(o, abyss, dynamicTrenchDark * 0.98, o);
+  }
+}
+
+// Landoppervlak met micro-reliëf, vulkanische as & schaduwwerking
+function landColor(x,y,z,o){
+  if(y<-0.8){
+    seaColor(x,y,z,o);
+    return;
+  }
+  else if(y<0.02) {
+    if (S.right !== 'col' && x < getCoastX(z)) {
+      // Onderzeese continentale helling naar de trog toe:
+      // Verkleurt DYNAMISCH mee met de diepte: hoe dieper naar de trog, hoe donkerder!
+      const depthDrop = Math.max(0, -0.15 - y);
+      const depthFactor = clamp(depthDrop / 1.80, 0, 1);
+      const trenchZone = Math.max(0, 1.0 - (x - CONT_TIP) / 3.4);
+      const dynamicSlopeDark = Math.pow(depthFactor, 0.70) * trenchZone;
+      const shelfSediment = rgb('#5d646b'); // Continentale helling sedimenten
+      const deepAbyss = rgb('#010205');     // Nachtzwart in de trogas
+      mixc(shelfSediment, deepAbyss, dynamicSlopeDark * 0.98, o);
+    } else {
+      mixc(K.sea2,K.sand,(y+0.8)/0.82,o);
+    }
+  }
+  else if(y<0.35) mixc(K.sand,K.green,Math.min(1,y/0.28),o);
+  else if(y<0.70) mixc(K.green,K.brown,(y-0.35)/0.35,o);
+  else if(y<1.05) mixc(K.brown,K.rock,(y-0.70)/0.35,o);
+  else mixc(K.rock,K.snow,Math.min(1,(y-1.05)/0.30),o);
+
+  // In gebergte bij continentale botsing (col):
+  // Op de hoogste toppen waar het mariene sediment mee omhoog is gestuwd (met visfossielen):
+  // Zandkleurige en kalkachtige ontsluitingen tussen de rotsen!
+  if (S.right === 'col' && y > 1.25 && Math.abs(x) < 1.8) {
+    const fossilMarine = rgb('#cfbf97'); // Zandsteen/kalksteen met fossielen
+    const patch = ss(0.40, 0.70, fbm(x * 3.5, z * 3.5));
+    mixc(o, fossilMarine, patch * 0.75, o);
+  }
+
+  const rockGrain=fbm(x*3.5+2.0,z*3.5);
+  const microDetail=vnoise(x*7.0,z*7.0)*0.08;
+  const reliefFactor=0.88+0.24*(rockGrain+microDetail);
+  if(y>0.02){o[0]*=reliefFactor;o[1]*=reliefFactor;o[2]*=reliefFactor}
+
+  let minVolcDist=99;
+  if(S.right !== 'col'){
+    for(const v of VOLC){
+      const d=Math.hypot(x-XV,(z-v[0])*0.9);
+      const rRim = 0.68 * Math.sqrt(v[1]);
+      const rVent = 0.38 * Math.sqrt(v[1]);
+      if(d < rRim && y > 0.40 * v[1]){
+        mixc(o, K.ash, 0.85, o); // donkere kraterkom
+        if(d < rVent){
+          const lavaIntensity = ss(0.35, 0.70, S.p) * (1 - d / rVent);
+          mixc(o, K.lava, lavaIntensity * 0.92, o); // gloeiende lavamonding
+        }
+      }
+      if(d < minVolcDist) minVolcDist = d;
+    }
+    // Donkere vulkanische as ALLEEN op de vulkaankegel zelf (binnen 1.10 eenheden en op hoogte):
+    if (minVolcDist < 1.10 && y > 0.50) {
+      const ashWeight = Math.max(0, 1 - minVolcDist / 1.05) * ss(0.40, 0.75, S.p);
+      const ashTone = vnoise(x * 6.0, z * 6.0) > 0.45 ? K.ash : K.cinder;
+      mixc(o, ashTone, ashWeight * 0.85, o);
+    }
+  }
+
+  const slopeX=rightTop(x+0.12,z)-rightTop(x-0.12,z);
+  const slopeZ=rightTop(x,z+0.12)-rightTop(x,z-0.12);
+  const shade=clamp(1.0 + (slopeX*0.28 - slopeZ*0.18),0.75,1.25);
+  o[0]*=shade;o[1]*=shade;o[2]*=shade;
+
+  if(S.erupt>0 && S.right !== 'col'){
+    const r=Math.hypot(x-XV,z*0.9);
+    const g=S.erupt*(1-ss(0.04,0.55,r));
+    if(g>0)mixc(o,K.lava,g,o);
+  }
+}
+
+/* ---------- three.js basis ---------- */
+const canvas=document.getElementById('gl');
+const renderer=new T.WebGLRenderer({canvas,antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.localClippingEnabled=true;
+const scene=new T.Scene();
+const camera=new T.PerspectiveCamera(38,1,0.1,200);
+const root=new T.Group();scene.add(root);
+const clip=new T.Plane(new T.Vector3(0,0,-1),0);
+scene.add(new T.HemisphereLight(0xdcecf5,0x4a382c,0.85));
+const sun=new T.DirectionalLight(0xffffff,0.95);sun.position.set(6,14,12);scene.add(sun);
+const lavaLight=new T.PointLight(0xff7a2a,0,9);scene.add(lavaLight);
+
+/* ---------- lagen (ribbon bodies) ZONDER GLITCHES AAN DE ACHTERKANT ---------- */
+const MAT=()=>new T.MeshStandardMaterial({vertexColors:true,roughness:0.92,metalness:0,depthWrite:true,depthTest:true,side:T.DoubleSide});
+
+const crustUniforms = {
+  u_p: { value: 0.0 },
+  u_isCol: { value: 0.0 },
+  u_zf: { value: 0.0 }
+};
+
+const vertexShaderHook = `
+  varying vec3 vGeolPos;
+`;
+
+const fragmentShaderHook = `
+  varying vec3 vGeolPos;
+  uniform float u_p;
+  uniform float u_isCol;
+  uniform float u_zf;
+
+  // Boven- en ondergrens van de continentale korst bij botsing
+  float getColTop(float x, float z, float p) {
+    float colDist = abs(x);
+    float mZone = clamp(1.0 - colDist / 4.2, 0.0, 1.0);
+    mZone = mZone * mZone * (3.0 - 2.0 * mZone);
+    float fld = sin(x * 2.2) * 0.45 + cos(z * 1.5) * 0.25;
+    float baseLand = 0.20 + 0.03 * sin(x * 0.6 + z * 0.4);
+
+    float inBasin = smoothstep(-2.5, -1.8, x) * (1.0 - smoothstep(1.8, 2.5, x));
+    float oceanBed = -0.75 + 0.04 * sin(x * 3.0 + z);
+    float basinClosure = smoothstep(0.0, 0.35, p);
+    float floorElevation = mix(oceanBed, baseLand, basinClosure);
+    float surfaceBase = mix(baseLand, floorElevation, inBasin);
+
+    return surfaceBase + p * (2.0 * mZone + max(0.0, fld * mZone));
+  }
+
+  float getColMoho(float x, float p) {
+    float colDist = abs(x);
+    float rootFactor = clamp(1.0 - colDist / 4.2, 0.0, 1.0);
+    rootFactor = rootFactor * rootFactor * (3.0 - 2.0 * rootFactor);
+    float inBasin = smoothstep(-2.5, -1.8, x) * (1.0 - smoothstep(1.8, 2.5, x)) * (1.0 - smoothstep(0.0, 0.35, p));
+    float baseMoho = -1.30 + inBasin * 0.15;
+    return baseMoho - 1.40 * rootFactor * p;
+  }
+
+  vec3 getFoldedCrustColor(vec3 pos, vec3 baseColor) {
+    if (u_isCol < 0.5) return baseColor;
+    float x = pos.x;
+    float y = pos.y;
+    float z = pos.z;
+
+    float topY = getColTop(x, z, u_p);
+    float botY = getColMoho(x, u_p);
+    float thick = max(0.001, topY - botY);
+    float t = clamp((topY - y) / thick, 0.0, 1.0);
+
+    float colDist = abs(x);
+    float mZone = clamp(1.0 - colDist / 4.4, 0.0, 1.0);
+    mZone = mZone * mZone * (3.0 - 2.0 * mZone);
+    float coll = mZone * u_p;
+
+    // --- 1. ORGANISCHE PLOOIING VAN HET GESTEENTE ---
+    // Natuurlijke geologische plooilijnen (harmonic waves die hellen met de diepte):
+    float foldWaveX = sin(x * 2.2 + t * 2.2) * 0.35 + sin(x * 4.2 - t * 1.4) * 0.16;
+    float foldWaveT = (sin(x * 2.4 + t * 1.8) * 0.28 + cos(x * 1.6 - t * 0.9) * 0.15) * sin(t * 3.14159);
+
+    float xf = x + coll * foldWaveX;
+    float tf = clamp(t + coll * foldWaveT, 0.0, 0.999);
+
+    // --- 2. OCEANISCHE KORST: SAMENGEPERST & OMHOOG GESTUWD ---
+    // In het begin (p = 0) is het oceaanbekken 5.0 breed (|x| <= 2.5).
+    // Door de botsing wordt het bekken horizontaal samengeperst en omhoog gestuwd:
+    float oceanHalfWidth = mix(2.50, 1.25, smoothstep(0.0, 1.0, u_p));
+    // Verticale bereik van de oceanische korst:
+    // Bij p = 0 beslaat het de volle diepte van het dunne bekken (1.0).
+    // Naarmate het gebergte omhoog groeit, vormt het oceanische gesteente de bovenkant van het centrale gebergte:
+    float oceanMaxDepth = mix(1.0, 0.42, smoothstep(0.10, 0.85, u_p));
+
+    float inOceanX = 1.0 - smoothstep(oceanHalfWidth - 0.25, oceanHalfWidth + 0.25, abs(xf));
+    float inOceanY = 1.0 - smoothstep(oceanMaxDepth - 0.08, oceanMaxDepth + 0.12, tf);
+    float oceanZone = clamp(inOceanX * inOceanY, 0.0, 1.0);
+
+    // --- 3. CONTINENTALE KORST MET OVERSCHUIVINGSPLOOIEN & WANORDE ---
+    // Natuurlijke overschuiving / dekblad-verschuiving:
+    // Schuin overschuivingsvlak van links naar rechts (Main Central Thrust type):
+    float rampL = xf + 1.25 * (tf - 0.45);
+    float thrustShiftL = smoothstep(-0.35, 0.35, rampL) * smoothstep(0.15, 0.85, tf);
+    // Terugschuiving van rechts (Backthrust):
+    float rampR = -xf + 1.25 * (tf - 0.45);
+    float thrustShiftR = smoothstep(-0.35, 0.35, rampR) * smoothstep(0.20, 0.85, tf);
+
+    // Door de overschuiving worden diepere lagen over ondiepere lagen geschoven,
+    // waardoor lagen plaatselijk gedupliceerd worden en niet meer in opeenvolgende volgorde liggen:
+    float tCont = tf + coll * (0.32 * thrustShiftL - 0.24 * thrustShiftR);
+    tCont = clamp(tCont, 0.0, 0.999);
+
+    // 10 contrastrijke continentale gesteentelagen:
+    float numLayers = 10.0;
+    float scaledT = tCont * numLayers;
+    float layerFrac = fract(scaledT);
+    int layerIdx = int(floor(scaledT));
+
+    vec3 c0  = vec3(0.86, 0.81, 0.68); // 0. Lichte kalksteen (crème / geelwit)
+    vec3 c1  = vec3(0.76, 0.56, 0.32); // 1. Okergeel zandsteen
+    vec3 c2  = vec3(0.60, 0.28, 0.20); // 2. Terracotta siltsteen / rode kleisteen
+    vec3 c3  = vec3(0.76, 0.72, 0.65); // 3. Lichte dolomiet / mergel
+    vec3 c4  = vec3(0.26, 0.25, 0.24); // 4. Donkergrijze schalie / leisteen
+    vec3 c5  = vec3(0.70, 0.50, 0.32); // 5. Roestbruin zandsteen
+    vec3 c6  = vec3(0.84, 0.78, 0.65); // 6. Zandige kalksteen
+    vec3 c7  = vec3(0.50, 0.42, 0.35); // 7. Metamorfe schist / kwartsiet
+    vec3 c8  = vec3(0.64, 0.32, 0.22); // 8. Roodbruine ijzerzandsteen
+    vec3 c9  = vec3(0.38, 0.32, 0.28); // 9. Diepe kristallijne granietsokkel
+
+    vec3 contCol = c0;
+    if (layerIdx == 1) contCol = c1;
+    else if (layerIdx == 2) contCol = c2;
+    else if (layerIdx == 3) contCol = c3;
+    else if (layerIdx == 4) contCol = c4;
+    else if (layerIdx == 5) contCol = c5;
+    else if (layerIdx == 6) contCol = c6;
+    else if (layerIdx == 7) contCol = c7;
+    else if (layerIdx == 8) contCol = c8;
+    else if (layerIdx >= 9) contCol = c9;
+
+    // Scherpe sedimentaire laagvlakken (bedding planes):
+    float seam = smoothstep(0.0, 0.08, layerFrac) * smoothstep(1.0, 0.92, layerFrac);
+    contCol = mix(contCol * 0.48, contCol, seam);
+    contCol *= (0.95 + 0.10 * sin(tCont * 60.0));
+
+    // --- 4. OCEANISCHE KORSTLAGEN (GRIJS MET ZANDKLEURIGE SEDIMENT-TOPLAAG) ---
+    // Het oceanische pakket behoudt zijn authentieke herkenbare kleuren:
+    // - Zandkleurig gestippeld sediment op de top (met fossielen)
+    // - 4 karakteristieke grijze oceanische korstlagen daaronder
+    vec3 oceanCol;
+    float relOceanT = clamp(tf / oceanMaxDepth, 0.0, 0.999);
+    if (relOceanT < 0.16) {
+      // Zandkleurige mariene sedimentlaag met korrels/fossielen
+      float stipple = fract(sin(dot(floor(pos.xy * 60.0), vec2(12.9898, 78.233))) * 43758.5453);
+      vec3 sandBase = vec3(0.85, 0.76, 0.58);
+      oceanCol = mix(sandBase * 0.82, sandBase * 1.15, stipple);
+      if (stipple > 0.82) oceanCol *= 0.72; // kleine donkere fossielkorreltjes
+    } else {
+      // 4 duidelijke grijze oceanische gesteentelagen (kussenbasalt, diabaas, gabbro, mariene schalie):
+      float ot = (relOceanT - 0.16) / 0.84;
+      float oScaled = ot * 4.0;
+      float oFrac = fract(oScaled);
+      int oIdx = int(floor(oScaled));
+      vec3 g1 = vec3(0.68, 0.70, 0.72); // Lichtgrijze mariene kalk/schalie
+      vec3 g2 = vec3(0.50, 0.52, 0.55); // Middengrijs kussenbasalt
+      vec3 g3 = vec3(0.36, 0.38, 0.41); // Donkergrijze diabaas
+      vec3 g4 = vec3(0.22, 0.24, 0.27); // Antracietgrijze gabbro
+      oceanCol = g1;
+      if (oIdx == 1) oceanCol = g2;
+      else if (oIdx == 2) oceanCol = g3;
+      else if (oIdx >= 3) oceanCol = g4;
+      float oSeam = smoothstep(0.0, 0.08, oFrac) * smoothstep(1.0, 0.92, oFrac);
+      oceanCol = mix(oceanCol * 0.45, oceanCol, oSeam);
+      oceanCol *= (0.94 + 0.10 * sin(ot * 32.0));
+    }
+
+    // Vloeiende, organische overgang tussen oceaan en continent (geen vensters, geen harde rechthoeken):
+    vec3 col = mix(contCol, oceanCol, oceanZone);
+    return col;
+  }
+`;
+
+function makeCrustMat(cacheKey) {
+  const m = new T.MeshStandardMaterial({
+    vertexColors: true,
+    roughness: 0.92,
+    metalness: 0,
+    depthWrite: true,
+    depthTest: true,
+    side: T.DoubleSide
+  });
+  m.customProgramCacheKey = () => cacheKey;
+  m.onBeforeCompile = shader => {
+    shader.uniforms.u_p = crustUniforms.u_p;
+    shader.uniforms.u_isCol = crustUniforms.u_isCol;
+    shader.uniforms.u_zf = crustUniforms.u_zf;
+
+    shader.vertexShader = vertexShaderHook + shader.vertexShader;
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <begin_vertex>',
+      '#include <begin_vertex>\n vGeolPos = position;'
+    );
+
+    shader.fragmentShader = fragmentShaderHook + shader.fragmentShader;
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <color_fragment>',
+      '#include <color_fragment>\n diffuseColor.rgb = getFoldedCrustColor(vGeolPos, diffuseColor.rgb);'
+    );
+  };
+  return m;
+}
+
+function makeBody(part){
+  const n=NX,vc=8*n+8,pos=new Float32Array(vc*3),nor=new Float32Array(vc*3),col=new Float32Array(vc*3),idx=[];
+  const sn=(f,c,x,y,z)=>{for(let k=0;k<c;k++){const o=(f+k)*3;nor[o]=x;nor[o+1]=y;nor[o+2]=z}};
+  sn(0,2*n,0,0,1);sn(2*n,2*n,0,0,-1);sn(4*n,2*n,0,-1,0);sn(6*n,2*n,0,1,0);sn(8*n,4,-1,0,0);sn(8*n+4,4,1,0,0);
+  for(let i=0;i<n-1;i++){
+    const a=2*i,b=a+1,c=a+2,d=a+3,B=2*n,Q=4*n;
+
+    // 1. Voorkant (doorsnede bij z = S.zf, normaal +Z):
+    idx.push(a,b,d, a,d,c);
+
+    // 2. Achterkant (doorsnede bij z = ZB, normaal -Z):
+    idx.push(B+c,B+d,B+a, B+a,B+d,B+b);
+
+    // 3. Onderkant (bodemwand van de lithosfeer naar de mantel):
+    // Alleen toevoegen voor de diepste lithosfeerlagen ('ol' en 'cl'), NOOIT voor de korst ('oc' en 'cc')!
+    if(part==='ol'||part==='cl'){
+      idx.push(Q+a,Q+b,Q+c, Q+b,Q+d,Q+c);
+    }
+  }
+
+  // 4. Kopwanden links en rechts:
+  // Alleen toevoegen voor de lithosfeerlagen ('ol' en 'cl'), NOOIT voor de korst ('oc' en 'cc')!
+  if(part==='ol'||part==='cl'){
+    const L=8*n,R=8*n+4;
+    idx.push(L,L+2,L+1,L,L+3,L+2, R,R+1,R+2,R,R+2,R+3);
+  }
+
+  const geo=new T.BufferGeometry();geo.setIndex(idx);
+  geo.setAttribute('position',new T.BufferAttribute(pos,3));geo.setAttribute('normal',new T.BufferAttribute(nor,3));geo.setAttribute('color',new T.BufferAttribute(col,3));
+  const mat=(part==='oc'||part==='cc')?makeCrustMat('crust_'+part):MAT();
+  const mesh=new T.Mesh(geo,mat);mesh.userData.part=part;mesh.frustumCulled=false;mesh.renderOrder=1;root.add(mesh);
+  return{geo,pos,col,mesh};
+}
+const sp=(P,i,x,y,z)=>{const o=i*3;P[o]=x;P[o+1]=y;P[o+2]=z};
+function updBody(L,o){
+  const n=NX,P=L.pos,C=L.col,zf=S.zf;let uF=0,uB=0,px=0,pF=0,pB=0;
+  const wc=(i,x,u,t,f,m)=>{o.cf(x,u,t,f,tc);const q=i*3;C[q]=tc[0]*m;C[q+1]=tc[1]*m;C[q+2]=tc[2]*m};
+  for(let i=0;i<n;i++){
+    const x=Math.min(o.xb,Math.max(o.xa,X0+i*DX));
+    const tF=o.top(x,zf),tB=o.top(x,ZB),bF=o.bot(x,zf,tF),bB=o.bot(x,ZB,tB);
+    if(i>0){uF+=Math.hypot(x-px,tF-pF);uB+=Math.hypot(x-px,tB-pB)}px=x;pF=tF;pB=tB;
+    sp(P,2*i,x,tF,zf);sp(P,2*i+1,x,bF,zf);
+    sp(P,2*n+2*i,x,tB,ZB);sp(P,2*n+2*i+1,x,bB,ZB);
+    sp(P,4*n+2*i,x,bF,zf);sp(P,4*n+2*i+1,x,bB,ZB);
+    sp(P,6*n+2*i,x,tF,zf);sp(P,6*n+2*i+1,x,tB,ZB);
+    wc(2*i,x,uF,0,0,1);wc(2*i+1,x,uF,1,0,1);wc(2*n+2*i,x,uB,0,1,0.88);wc(2*n+2*i+1,x,uB,1,1,0.88);
+    wc(4*n+2*i,x,uF,1,0,0.7);wc(4*n+2*i+1,x,uF,1,0,0.7);wc(6*n+2*i,x,uF,0,0,1);wc(6*n+2*i+1,x,uF,0,0,1);
+    if(i===0){const b=8*n;sp(P,b,x,tF,zf);sp(P,b+1,x,bF,zf);sp(P,b+2,x,bB,ZB);sp(P,b+3,x,tB,ZB);
+      wc(b,x,uF,0,0,0.9);wc(b+1,x,uF,1,0,0.9);wc(b+2,x,uF,1,0,0.7);wc(b+3,x,uF,0,0,0.7)}
+    if(i===n-1){const b=8*n+4;sp(P,b,x,tF,zf);sp(P,b+1,x,bF,zf);sp(P,b+2,x,bB,ZB);sp(P,b+3,x,tB,ZB);
+      wc(b,x,uF,0,0,0.9);wc(b+1,x,uF,1,0,0.9);wc(b+2,x,uF,1,0,0.7);wc(b+3,x,uF,0,0,0.7)}
+  }
+  L.geo.attributes.position.needsUpdate=true;L.geo.attributes.color.needsUpdate=true;L.geo.computeVertexNormals();L.geo.boundingSphere=null;L.geo.boundingBox=null;
+}
+function makeGrid(i0,i1,part){
+  const ng=i1-i0+1,vc=ng*NZ,pos=new Float32Array(vc*3),col=new Float32Array(vc*3),idx=[];
+  for(let j=0;j<NZ-1;j++)for(let k=0;k<ng-1;k++){const a=j*ng+k,b=a+1,c=a+ng,d=c+1;idx.push(a,c,b,b,c,d)}
+  const geo=new T.BufferGeometry();geo.setIndex(idx);
+  geo.setAttribute('position',new T.BufferAttribute(pos,3));geo.setAttribute('color',new T.BufferAttribute(col,3));
+  const mesh=new T.Mesh(geo,MAT());mesh.userData.part=part;mesh.frustumCulled=false;mesh.renderOrder=1;root.add(mesh);
+  return{i0,ng,geo,pos,col,mesh};
+}
+function updGrid(G,top,colFn){
+  for(let j=0;j<NZ;j++){const z=ZB+(S.zf-ZB)*j/(NZ-1);
+    for(let k=0;k<G.ng;k++){
+      let x=X0+(G.i0+k)*DX;
+      if(G.mesh.userData.part==='oc'){
+        x=Math.min(CONT_TIP, x);
+      }
+      const y=top(x,z),v=j*G.ng+k;
+      sp(G.pos,v,x,y,z);colFn(x,y,z,tc);sp(G.col,v,tc[0],tc[1],tc[2])
+    }
+  }
+  G.geo.attributes.position.needsUpdate=true;G.geo.attributes.color.needsUpdate=true;G.geo.computeVertexNormals();G.geo.boundingSphere=null;G.geo.boundingBox=null;
+}
+const ocCrust=makeBody('oc'),ocLith=makeBody('ol'),cCrust=makeBody('cc'),cLith=makeBody('cl');
+// Naadloze aansluiting tussen oceanische en continentale toplaag op de wigteen x = CONT_TIP (-1.6 = index 94)
+const ocTop=makeGrid(0,94,'oc'),cTop=makeGrid(94,219,'cc');
+
+function rebuildBodies(){
+  if(S.right === 'col'){
+    updBody(ocCrust,{xa:X0,xb:CONT_TIP,top:seaTop,bot:colMoho,cf:cfOcean});
+    updBody(ocLith,{xa:X0,xb:CONT_TIP,top:(x,z)=>colMoho(x,z,seaTop(x,z)),bot:rBase,cf:cfOLith});
+    updBody(cCrust,{xa:CONT_TIP,xb:10.9,top:rightTop,bot:rCrustBot,cf:cfCont});
+    updBody(cLith,{xa:CONT_TIP,xb:10.9,top:(x,z)=>rCrustBot(x,z,rightTop(x,z)),bot:rBase,cf:cfCLith});
+    return;
+  }
+  if(S.right === 'div'){
+    updBody(ocCrust,{xa:X0,xb:0.0,top:divTop,bot:divMoho,cf:cfDivOcean});
+    updBody(ocLith,{xa:X0,xb:0.0,top:(x,z)=>divMoho(x,z,divTop(x,z)),bot:divBase,cf:cfDivLith});
+    updBody(cCrust,{xa:0.0,xb:10.9,top:divTop,bot:divMoho,cf:cfDivOcean});
+    updBody(cLith,{xa:0.0,xb:10.9,top:(x,z)=>divMoho(x,z,divTop(x,z)),bot:divBase,cf:cfDivLith});
+    return;
+  }
+  if(S.right === 'trans'){
+    updBody(ocCrust,{xa:X0,xb:0.0,top:transTop,bot:transMoho,cf:cfTransCrust});
+    updBody(ocLith,{xa:X0,xb:0.0,top:(x,z)=>transMoho(x,z,transTop(x,z)),bot:transBase,cf:cfCLith});
+    updBody(cCrust,{xa:0.0,xb:10.9,top:transTop,bot:transMoho,cf:cfTransCrust});
+    updBody(cLith,{xa:0.0,xb:10.9,top:(x,z)=>transMoho(x,z,transTop(x,z)),bot:transBase,cf:cfCLith});
+    return;
+  }
+  const tip=xTip();
+  // Geometrische versmalling (tapering) van de plaattip naarmate de plaat in de mantel zakt:
+  const getSlabTaper = (x) => {
+    if (x <= tip - 2.2) return 1.0;
+    const u = clamp((x - (tip - 2.2)) / 2.2, 0, 1);
+    return 1.0 - 0.78 * Math.pow(u, 1.4); // loopt vloeiend terug naar 0.22 aan de tip
+  };
+
+  updBody(ocCrust,{
+    xa: X0, xb: tip,
+    top: seaTop,
+    bot: (x, z, t) => t - 0.30 * getSlabTaper(x),
+    cf: cfOcean
+  });
+  updBody(ocLith,{
+    xa: X0, xb: tip,
+    top: (x, z) => seaTop(x, z) - 0.30 * getSlabTaper(x),
+    bot: (x, z) => {
+      const taper = getSlabTaper(x);
+      const topL = seaTop(x, z) - 0.30 * taper;
+      // Dikte van de lithosfeermantel sluit overal naadloos en vol aan op de asthenosfeer (nooit boven y = -2.2)
+      return Math.min(-2.20, topL - 1.10 * taper);
+    },
+    cf: cfOLith
+  });
+  updBody(cCrust,{xa:CONT_TIP,xb:10.9,top:rightTop,bot:rCrustBot,cf:cfCont});
+  updBody(cLith,{xa:CONT_TIP,xb:10.9,top:(x,z)=>rCrustBot(x,z,rightTop(x,z)),bot:(x)=>rBase(x),cf:cfCLith});
+}
+function rebuildTops(){
+  const leftCol = S.right === 'col' ? landColor : (S.right === 'div' ? divSeaColor : (S.right === 'trans' ? transLandColor : seaColor));
+  const rightCol = S.right === 'div' ? divSeaColor : (S.right === 'trans' ? transLandColor : landColor);
+  updGrid(ocTop, seaTop, leftCol);
+  updGrid(cTop, rightTop, rightCol);
+}
+
+/* ---------- mantel (met z-fighting preventie aan de achterwand) ---------- */
+// Mantelhoogte sluit naadloos aan op de onderkant van de oceanische lithosfeer (y = -2.15, achter ocLith)
+const MY = -2.15 - MH / 2, MX = X0 + MW / 2;
+const mGeo=new T.PlaneGeometry(MW,MH,44,16),mVc=mGeo.attributes.position.count;
+mGeo.setAttribute('color',new T.BufferAttribute(new Float32Array(mVc*3),3));
+const mFront=new T.Mesh(mGeo,new T.MeshBasicMaterial({vertexColors:true}));mFront.position.set(MX,MY,0);mFront.userData.part='mantle';root.add(mFront);
+
+// mBox zit iets naar achteren (ZB - 0.03) met polygonOffset zodat het NOOIT flikkert tegen de aardlagen!
+const mBoxMat=new T.MeshStandardMaterial({color:0x7e2a14,roughness:1,polygonOffset:true,polygonOffsetFactor:2,polygonOffsetUnits:2});
+const mBox=new T.Mesh(new T.BoxGeometry(1,1,1),mBoxMat);mBox.userData.part='mantle';root.add(mBox);
+
+function updMantle(){
+  const P=mGeo.attributes.position,C=mGeo.attributes.color.array;
+  for(let i=0;i<mVc;i++){const x=P.getX(i)+MX,y=P.getY(i)+MY,d=clamp((-2.15-y)/MH,0,1);
+    mixc(K.m1,K.m2,d,tc);
+    if(S.right === 'div' && Math.abs(x) < 2.2){
+      const upwell = (1.0 - Math.abs(x)/2.2) * (1.0 - d * 0.4);
+      mixc(tc, [0.95, 0.42, 0.14], upwell * 0.85, tc);
+    }
+    const n=0.82+0.36*fbm(x*0.32+S.tt*0.02,y*0.45-S.tt*0.015);
+    C[i*3]=tc[0]*n;C[i*3+1]=tc[1]*n;C[i*3+2]=tc[2]*n}
+  mGeo.attributes.color.needsUpdate=true;
+  mFront.position.z=S.zf-0.03;
+  const backZ=ZB-0.03;
+  const dep=(S.zf-0.05)-backZ;
+  mBox.scale.set(MW,MH,dep);
+  mBox.position.set(MX,MY,backZ+dep/2);
+}
+
+/* ---------- ECHTE 3D OCEAANWATER MASSA MET NATUURLIJKE KUSTLIJN & TSUNAMI-GOLVEN ---------- */
+/* Het oceaanwater vult de oceaan van zeeniveau (y = 0.0) tot de zeebodem.
+   Het water heeft een natuurlijke meanderende kustlijn en reageert met echte golfbewegingen op aardbevingen! */
+const WNX=72,WNZ=32;
+
+function makeWaterMesh() {
+  // WNX * WNZ (topvlak) + WNX * 2 (voorwand)
+  const topCount = WNX * WNZ;
+  const wallCount = WNX * 2;
+  const vc = topCount + wallCount;
+  const pos = new Float32Array(vc * 3);
+  const idx = [];
+
+  // 1. Bovenvlak (zeeniveau)
+  for (let j = 0; j < WNZ - 1; j++) {
+    for (let i = 0; i < WNX - 1; i++) {
+      const a = j * WNX + i;
+      const b = a + 1;
+      const c = a + WNX;
+      const d = c + 1;
+      idx.push(a, b, c,  b, d, c);
+    }
+  }
+
+  // 2. Voorwand (dwarsdoorsnede cutaway)
+  const fOff = topCount;
+  for (let i = 0; i < WNX - 1; i++) {
+    const tl = fOff + i * 2;       // top links
+    const bl = fOff + i * 2 + 1;   // bodem links
+    const tr = fOff + (i + 1) * 2; // top rechts
+    const br = fOff + (i + 1) * 2 + 1; // bodem rechts
+    // Twee driehoeken per kolom:
+    idx.push(tl, tr, bl,  tr, br, bl);
+  }
+
+  const geo = new T.BufferGeometry();
+  geo.setIndex(idx);
+  geo.setAttribute('position', new T.BufferAttribute(pos, 3));
+  const mat = new T.MeshStandardMaterial({
+    color: 0x0284c7,
+    transparent: true,
+    opacity: 0.38,
+    roughness: 0.1,
+    metalness: 0.05,
+    depthWrite: false,
+    side: T.DoubleSide
+  });
+  const mesh = new T.Mesh(geo, mat);
+  mesh.userData.part = 'water';
+  mesh.renderOrder = 2;
+  root.add(mesh);
+  return { geo, pos, mesh };
+}
+const waterObj = makeWaterMesh();
+
+// Seismische tsunamigolven-tracker
+const tsunamis = [];
+function triggerTsunami(epicenterX, epicenterZ, mag) {
+  tsunamis.push({
+    x: epicenterX,
+    z: epicenterZ,
+    age: 0,
+    amp: 0.35 * Math.min(1.5, (mag || 5.5) / 5.0),
+    spd: 5.4,
+    dur: 6.0
+  });
+}
+
+function updWater(dt) {
+  if (S.right === 'trans') {
+    waterObj.mesh.visible = false;
+    return;
+  }
+  if (S.right === 'col') {
+    if (S.p >= 0.35 || !S.water) {
+      waterObj.mesh.visible = false;
+      return;
+    }
+    waterObj.mesh.visible = true;
+    const P = waterObj.pos;
+    const zf = S.zf;
+    // Oeroceaanbekken precies gecentreerd tussen x = -2.5 en x = +2.5
+    const xStart = -2.5;
+    const xEnd = 2.5;
+    for (let j = 0; j < WNZ; j++) {
+      const z = ZB + (zf - ZB) * j / (WNZ - 1);
+      for (let i = 0; i < WNX; i++) {
+        const x = xStart + (xEnd - xStart) * i / (WNX - 1);
+        const v = (j * WNX + i) * 3;
+        const groundY = colTop(x, z);
+        const wave = Math.sin(x * 2.0 + S.tt * 2.5) * 0.02 + Math.cos(z * 1.5 + S.tt * 1.8) * 0.015;
+        const waterLevel = 0.0 + wave;
+        P[v] = x;
+        P[v + 1] = (waterLevel > groundY) ? waterLevel : Math.min(-0.04, groundY - 0.30);
+        P[v + 2] = z;
+      }
+    }
+    const fOff = WNX * WNZ;
+    for (let i = 0; i < WNX; i++) {
+      const x = xStart + (xEnd - xStart) * i / (WNX - 1);
+      const groundYF = colTop(x, zf);
+      const waveF = Math.sin(x * 2.0 + S.tt * 2.5) * 0.02;
+      const topY = Math.max(groundYF, 0.0 + waveF);
+      const botY = groundYF;
+      const topIdx = (fOff + i * 2) * 3;
+      const botIdx = (fOff + i * 2 + 1) * 3;
+      P[topIdx] = x; P[topIdx + 1] = (topY > botY) ? topY : botY - 0.2; P[topIdx + 2] = zf;
+      P[botIdx] = x; P[botIdx + 1] = (topY > botY) ? botY : botY - 0.2; P[botIdx + 2] = zf;
+    }
+    waterObj.geo.attributes.position.needsUpdate = true;
+    waterObj.geo.computeVertexNormals();
+    return;
+  }
+  waterObj.mesh.visible = S.water;
+  if (!S.water) return;
+  const P = waterObj.pos;
+  const zf = S.zf;
+  const delta = dt || 0.016;
+
+  for (let w = tsunamis.length - 1; w >= 0; w--) {
+    tsunamis[w].age += delta * S.speed;
+    if (tsunamis[w].age > tsunamis[w].dur) tsunamis.splice(w, 1);
+  }
+
+  // 1. Topvlak: horizontaal op zeeniveau
+  for (let j = 0; j < WNZ; j++) {
+    const z = ZB + (zf - ZB) * j / (WNZ - 1);
+    const isDiv = S.right === 'div';
+    const coastX = isDiv ? getDivCoast(S.p) : 10.9;
+    const xCoast = (isDiv ? coastX : ((S.right === 'ocean') ? 10.9 : getCoastX(z)));
+    const xEnd = (isDiv ? coastX : ((S.right === 'ocean') ? 10.9 : (xCoast + 0.40)));
+    const xStart = isDiv ? -coastX : X0;
+    for (let i = 0; i < WNX; i++) {
+      const x = (S.right === 'div') ? (-getDivCoast(S.p) + 2.0 * getDivCoast(S.p) * i / (WNX - 1)) : (X0 + (xEnd - X0) * i / (WNX - 1));
+      const v = (j * WNX + i) * 3;
+
+      let wave = Math.sin(x * 1.5 + S.tt * 2.5) * 0.03 + Math.cos(z * 1.2 + S.tt * 1.8) * 0.02;
+      for (let w = 0; w < tsunamis.length; w++) {
+        const tsu = tsunamis[w];
+        const dist = Math.hypot(x - tsu.x, z - tsu.z);
+        const d = dist - tsu.age * tsu.spd;
+        if (Math.abs(d) < 3.2) {
+          const phase = (d / 2.2) * Math.PI * 2;
+          const env = Math.cos((d / 3.2) * (Math.PI / 2));
+          const decay = Math.exp(-tsu.age * 0.50) * Math.max(0, 1 - dist / 22);
+          wave += Math.sin(phase) * env * tsu.amp * decay;
+        }
+      }
+
+      const groundY = (x < CONT_TIP) ? seaTop(x, z) : rightTop(x, z);
+      const waterLevel = 0.0 + wave;
+      P[v] = x;
+      // Bij overstroming (tsunami) stijgt het water dynamisch boven het land (waterLevel > groundY).
+      // Op droog land zonder overstroming zakt het watermesh veilig diep weg zodat er GEEN blokjes/driehoekjes door het land steken:
+      P[v + 1] = (waterLevel > groundY) ? waterLevel : Math.min(-0.04, groundY - 0.30);
+      P[v + 2] = z;
+    }
+  }
+
+  // 2. Voorwand: vult van zeeniveau tot zeebodem
+  const fOff = WNX * WNZ;
+  const xCoastF = (S.right === 'div' || S.right === 'ocean') ? 10.9 : getCoastX(zf);
+  const xEndF = (S.right === 'div' || S.right === 'ocean') ? 10.9 : (xCoastF + 0.40);
+  const divCoastF = (S.right === 'div') ? getDivCoast(S.p) : 0;
+  for (let i = 0; i < WNX; i++) {
+    const x = (S.right === 'div') ? (-divCoastF + 2.0 * divCoastF * i / (WNX - 1)) : (X0 + (xEndF - X0) * i / (WNX - 1));
+    const groundYF = (x < CONT_TIP) ? seaTop(x, zf) : rightTop(x, zf);
+    let waveF = Math.sin(x * 1.5 + S.tt * 2.5) * 0.03;
+    for (let w = 0; w < tsunamis.length; w++) {
+      const tsu = tsunamis[w];
+      const dist = Math.hypot(x - tsu.x, zf - tsu.z);
+      const d = dist - tsu.age * tsu.spd;
+      if (Math.abs(d) < 3.2) {
+        const phase = (d / 2.2) * Math.PI * 2;
+        const env = Math.cos((d / 3.2) * (Math.PI / 2));
+        const decay = Math.exp(-tsu.age * 0.50) * Math.max(0, 1 - dist / 22);
+        waveF += Math.sin(phase) * env * tsu.amp * decay;
+      }
+    }
+    const topY = Math.max(groundYF, 0.0 + waveF);
+    const botY = groundYF;
+
+    const topIdx = (fOff + i * 2) * 3;
+    const botIdx = (fOff + i * 2 + 1) * 3;
+
+    P[topIdx]     = x;
+    P[topIdx + 1] = topY;
+    P[topIdx + 2] = zf + 0.005;
+
+    P[botIdx]     = x;
+    P[botIdx + 1] = botY;
+    P[botIdx + 2] = zf + 0.005;
+  }
+
+  waterObj.geo.attributes.position.needsUpdate = true;
+  waterObj.geo.computeVertexNormals();
+}
+
+
+/* ==================== REALISTISCHE 3D HUISJES, HEKJES EN HAARSCHERPE ASFALTWEG VOOR TRANSFORM ==================== */
+// Realistische Amerikaanse ranch-stijl huizen met natuurlijke smaakvolle architectuur
+function createRealisticHouse(style = 0) {
+  const g = new T.Group();
+
+  // Kleurenpalet per stijl:
+  // 0: Wit houten landhuis met donker leisteen dak
+  // 1: Warm beige ranch met antraciet dak
+  // 2: Cedarwood / zandsteen boerderij met terracotta dak
+  const styles = [
+    { wall: 0xf5f5f4, roof: 0x1e293b, trim: 0x334155, chim: 0x78716c },
+    { wall: 0xe7e5e4, roof: 0x334155, trim: 0x44403c, chim: 0xa8a29e },
+    { wall: 0xd6d3d1, roof: 0x7c2d12, trim: 0x292524, chim: 0x78716c }
+  ];
+  const pal = styles[style % styles.length];
+
+  // Hoofdgebouw (gevels)
+  const wallMat = new T.MeshStandardMaterial({ color: pal.wall, roughness: 0.8, metalness: 0.05 });
+  const wMesh = new T.Mesh(new T.BoxGeometry(0.44, 0.24, 0.34), wallMat);
+  wMesh.position.y = 0.12;
+  g.add(wMesh);
+
+  // Zadeldak (zadeldak met realistische helling en overstek)
+  const roofMat = new T.MeshStandardMaterial({ color: pal.roof, roughness: 0.6, metalness: 0.15 });
+  const roofGeo = new T.ConeGeometry(0.32, 0.18, 4);
+  roofGeo.rotateY(Math.PI / 4);
+  const rMesh = new T.Mesh(roofGeo, roofMat);
+  rMesh.scale.set(1.15, 1.0, 0.95);
+  rMesh.position.y = 0.24 + 0.09;
+  g.add(rMesh);
+
+  // Schoorsteen
+  const chimMat = new T.MeshStandardMaterial({ color: pal.chim, roughness: 0.9 });
+  const cMesh = new T.Mesh(new T.BoxGeometry(0.06, 0.15, 0.06), chimMat);
+  cMesh.position.set(0.12, 0.34, 0.06);
+  g.add(cMesh);
+
+  // Deur en ramen (donker glas / kozijnen)
+  const windowMat = new T.MeshBasicMaterial({ color: 0x1e293b });
+  const door = new T.Mesh(new T.PlaneGeometry(0.07, 0.13), windowMat);
+  door.position.set(0, 0.065, 0.171);
+  g.add(door);
+
+  const win1 = new T.Mesh(new T.PlaneGeometry(0.08, 0.08), windowMat);
+  win1.position.set(-0.13, 0.13, 0.171);
+  g.add(win1);
+
+  const win2 = new T.Mesh(new T.PlaneGeometry(0.08, 0.08), windowMat);
+  win2.position.set(0.13, 0.13, 0.171);
+  g.add(win2);
+
+  g.userData.part = 'house';
+  return g;
+}
+
+// Realistisch wit houten weidehekje (ranch fence) dat parallel aan de weg loopt
+function createRanchFence(len = 1.6) {
+  const g = new T.Group();
+  const woodMat = new T.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.85 });
+  const nPosts = Math.max(3, Math.round(len / 0.45));
+  for (let i = 0; i < nPosts; i++) {
+    const post = new T.Mesh(new T.CylinderGeometry(0.018, 0.018, 0.16, 6), woodMat);
+    post.position.set(-len/2 + len * i / (nPosts - 1), 0.08, 0);
+    g.add(post);
+  }
+  // Twee horizontale liggers
+  for (const y of [0.06, 0.12]) {
+    const rail = new T.Mesh(new T.BoxGeometry(len, 0.018, 0.012), woodMat);
+    rail.position.set(0, y, 0);
+    g.add(rail);
+  }
+  return g;
+}
+
+// 3D HAARSCHERPE ASFALTWEG (TWEE GESCHEIDEN SEGMENTEN DIE EXACT OP x = 0 BREKEN)
+function createSharpRoadSegment(xa, xb, nSteps = 36) {
+  const vc = (nSteps + 1) * 2;
+  const pos = new Float32Array(vc * 3);
+  const idx = [];
+  for (let i = 0; i < nSteps; i++) {
+    const a = i * 2, b = a + 1, c = a + 2, d = a + 3;
+    idx.push(a, b, c,  b, d, c);
+  }
+  const geo = new T.BufferGeometry();
+  geo.setIndex(idx);
+  geo.setAttribute('position', new T.BufferAttribute(pos, 3));
+  // Donkergrijs strak asfalt
+  const mat = new T.MeshStandardMaterial({
+    color: 0x27272a,
+    roughness: 0.9,
+    metalness: 0.05,
+    side: T.DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2
+  });
+  const mesh = new T.Mesh(geo, mat);
+  mesh.userData.part = 'road';
+
+  // Gele middenstreep als aparte scherpe lijn
+  const stripePos = new Float32Array(vc * 3);
+  const stripeGeo = new T.BufferGeometry();
+  stripeGeo.setIndex(idx);
+  stripeGeo.setAttribute('position', new T.BufferAttribute(stripePos, 3));
+  const stripeMat = new T.MeshBasicMaterial({
+    color: 0xfacc15,
+    side: T.DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: -3,
+    polygonOffsetUnits: -3
+  });
+  const stripeMesh = new T.Mesh(stripeGeo, stripeMat);
+
+  const group = new T.Group();
+  group.add(mesh);
+  group.add(stripeMesh);
+
+  return { group, mesh, geo, pos, stripeGeo, stripePos, xa, xb, nSteps };
+}
+
+const villageGroup = new T.Group();
+root.add(villageGroup);
+
+// Wegsegmenten links en rechts van de breuklijn x = 0:
+const roadLeft = createSharpRoadSegment(-9.0, 0.0, 36);
+const roadRight = createSharpRoadSegment(0.0, 9.0, 36);
+villageGroup.add(roadLeft.group);
+villageGroup.add(roadRight.group);
+
+// Huizen geplaatst langs de weg
+const HOUSES_DATA = [
+  // Linkerplaat (x < 0, schuift noordwaarts +Z):
+  { x: -1.3, z: -3.05, style: 0, rot: 0 },
+  { x: -2.6, z: -3.95, style: 1, rot: Math.PI },
+  { x: -4.0, z: -3.05, style: 2, rot: 0 },
+  { x: -5.5, z: -3.95, style: 0, rot: Math.PI },
+
+  // Rechterplaat (x > 0, schuift zuidwaarts -Z):
+  { x: +1.3, z: -3.95, style: 1, rot: Math.PI },
+  { x: +2.6, z: -3.05, style: 0, rot: 0 },
+  { x: +4.0, z: -3.95, style: 2, rot: Math.PI },
+  { x: +5.5, z: -3.05, style: 1, rot: 0 }
+];
+
+const houseMeshes = HOUSES_DATA.map(d => {
+  const h = createRealisticHouse(d.style);
+  h.rotation.y = d.rot;
+  villageGroup.add(h);
+  return { mesh: h, baseX: d.x, baseZ: d.z };
+});
+
+// Witte weidehekjes langs de percelen
+const fenceLeft1 = createRanchFence(1.8);
+const fenceLeft2 = createRanchFence(1.8);
+const fenceRight1 = createRanchFence(1.8);
+const fenceRight2 = createRanchFence(1.8);
+villageGroup.add(fenceLeft1);
+villageGroup.add(fenceLeft2);
+villageGroup.add(fenceRight1);
+villageGroup.add(fenceRight2);
+
+function updateRoadSegmentMesh(road, zCenter) {
+  const halfW = 0.20;
+  const stripeHalfW = 0.022;
+  const pos = road.pos;
+  const sPos = road.stripePos;
+  const n = road.nSteps;
+
+  for (let i = 0; i <= n; i++) {
+    const x = road.xa + (road.xb - road.xa) * i / n;
+    const z0 = zCenter - halfW;
+    const z1 = zCenter + halfW;
+    const y0 = transTop(x, z0) + 0.022;
+    const y1 = transTop(x, z1) + 0.022;
+
+    const idx0 = (i * 2) * 3;
+    const idx1 = (i * 2 + 1) * 3;
+
+    pos[idx0]     = x; pos[idx0 + 1] = y0; pos[idx0 + 2] = z0;
+    pos[idx1]     = x; pos[idx1 + 1] = y1; pos[idx1 + 2] = z1;
+
+    // Middenstreep
+    const sz0 = zCenter - stripeHalfW;
+    const sz1 = zCenter + stripeHalfW;
+    const sy0 = transTop(x, sz0) + 0.026;
+    const sy1 = transTop(x, sz1) + 0.026;
+    sPos[idx0]     = x; sPos[idx0 + 1] = sy0; sPos[idx0 + 2] = sz0;
+    sPos[idx1]     = x; sPos[idx1 + 1] = sy1; sPos[idx1 + 2] = sz1;
+  }
+  road.geo.attributes.position.needsUpdate = true;
+  road.geo.computeVertexNormals();
+  road.stripeGeo.attributes.position.needsUpdate = true;
+}
+
+function updVillage() {
+  const isTrans = S.right === 'trans';
+  villageGroup.visible = isTrans;
+  if (!isTrans) return;
+
+  const shiftL = +(0.15 + 1.25 * S.p);
+  const shiftR = -(0.15 + 1.25 * S.p);
+
+  // 1. Update haarscherpe 3D wegsegmenten (breken exact op x = 0):
+  updateRoadSegmentMesh(roadLeft, -3.5 + shiftL);
+  updateRoadSegmentMesh(roadRight, -3.5 + shiftR);
+
+  // 2. Update ranch huizen:
+  for (let i = 0; i < houseMeshes.length; i++) {
+    const item = houseMeshes[i];
+    const isLeft = item.baseX < 0;
+    const shift = isLeft ? shiftL : shiftR;
+    const curZ = item.baseZ + shift;
+    const curY = transTop(item.baseX, curZ);
+    item.mesh.position.set(item.baseX, curY, curZ);
+  }
+
+  // 3. Update weidehekjes:
+  fenceLeft1.position.set(-2.0, transTop(-2.0, -3.22 + shiftL), -3.22 + shiftL);
+  fenceLeft2.position.set(-4.8, transTop(-4.8, -3.78 + shiftL), -3.78 + shiftL);
+
+  fenceRight1.position.set(2.0, transTop(2.0, -3.78 + shiftR), -3.78 + shiftR);
+  fenceRight2.position.set(4.8, transTop(4.8, -3.22 + shiftR), -3.22 + shiftR);
+}
+/* ---------- bewegingspijlen ---------- */
+function makeArrow(){
+  const g=new T.Group(),m=new T.MeshStandardMaterial({color:0xff6a3d,emissive:0x802000,roughness:0.5});
+  const sh=new T.Mesh(new T.CylinderGeometry(0.09,0.09,1,12),m);sh.rotation.z=-Math.PI/2;sh.position.x=0.5;sh.userData.part='arrow';
+  const cn=new T.Mesh(new T.ConeGeometry(0.26,0.55,16),m);cn.rotation.z=-Math.PI/2;cn.position.x=1.25;cn.userData.part='arrow';
+  g.add(sh,cn);g.userData.sh=sh;g.userData.cn=cn;root.add(g);return g;
+}
+const arrL=makeArrow(),arrR=makeArrow();
+function setArrow(a,len,x,y,z,dir){const sh=a.userData.sh,cn=a.userData.cn;sh.scale.y=len;sh.position.x=len/2;cn.position.x=len+0.27;a.position.set(x,y,z);a.rotation.y=dir<0?Math.PI:0}
+function updArrows(){
+  arrL.visible=arrR.visible=S.arrows;if(!S.arrows)return;
+  const z=S.zf-0.35;
+  if(S.right === 'div'){
+    const coastX = getDivCoast(S.p);
+    const b = Math.sin(S.tt*3)*0.15*(S.playing?1:0);
+    const xPos = Math.min(10.0, coastX + 1.6);
+    const yL = divTop(-xPos, z) + 0.85;
+    const yR = divTop(xPos, z) + 0.85;
+    setArrow(arrL, 1.5, -xPos - b, yL, z, -1); // wijst naar links <-- op het continent
+    setArrow(arrR, 1.5, xPos + b, yR, z, 1);   // wijst naar rechts --> op het continent
+    return;
+  }
+  if(S.right === 'trans'){
+    const b=Math.sin(S.tt*3)*0.12*(S.playing?1:0);
+    const yL = transTop(-3.8, z) + 0.75;
+    const yR = transTop(3.8, z) + 0.75;
+    setArrow(arrL, 1.5, -3.8, yL, z - 0.7 + b, 1);
+    arrL.rotation.y = Math.PI / 2; // wijst naar voren (+Z)
+    setArrow(arrR, 1.5, 3.8, yR, z + 0.7 - b, 1);
+    arrR.rotation.y = -Math.PI / 2; // wijst naar achteren (-Z)
+    return;
+  }
+  const b=Math.sin(S.tt*3)*0.12*(S.playing?1:0);
+  const yL = S.right === 'col' ? surfY(-8.2, z) + 0.9 : 0.8;
+  const yR = rightTop(8, z) + 0.9;
+  setArrow(arrL,1.6,-8.2+b,yL,z,1);
+  setArrow(arrR,0.7,9.0-b*0.5,yR,z,-1);
+}
+
+/* ---------- magmakamer, kraterpijp, Catmull-Rom magmadeeltjes en lava ---------- */
+const decalMat=(c,o)=>new T.MeshBasicMaterial({color:c,transparent:true,opacity:o,depthTest:true,depthWrite:false,side:T.DoubleSide});
+
+// ORGANISCHE PEERVORMIGE / GELOBDE MAGMAKAMER (PLUTON / DIAPIER)
+function makePlutonGeo(rx=1.05, ry=1.25){
+  const shape = new T.Shape();
+  const N = 48;
+  for(let i=0; i<=N; i++){
+    const th = (i/N)*Math.PI*2;
+    const cosT = Math.cos(th);
+    const sinT = Math.sin(th);
+    // Onder breed en afgerond, naar boven spits toelopend zoals een opstijgende lavadruppel
+    const widthFactor = 1.0 - 0.38*cosT;
+    const lobes = 1.0 + 0.06*Math.cos(th*4) + 0.04*Math.cos(th*6);
+    const x = sinT * widthFactor * rx * lobes;
+    const y = cosT * ry * lobes;
+    if(i===0) shape.moveTo(x, y);
+    else shape.lineTo(x, y);
+  }
+  return new T.ShapeGeometry(shape);
+}
+
+const chamber=new T.Mesh(makePlutonGeo(1.05, 1.25),decalMat(0xff5518,0.96));chamber.userData.part='chamber';chamber.renderOrder=5;root.add(chamber);
+const chamberGlow=new T.Mesh(makePlutonGeo(1.30, 1.50),decalMat(0xff9933,0.35));chamberGlow.renderOrder=4;root.add(chamberGlow);
+
+// DIEPE SMELTZONE OP 100-150 KM DIEPTE (STRIKT IN DE MANTELWIG BOVEN DE PLAAT)
+function makeMeltZoneGeo(){
+  const rootShape = new T.Shape();
+  const N=32;
+  for(let i=0; i<=N; i++){
+    const th=(i/N)*Math.PI*2;
+    const rx = 0.42 * (1.0 + 0.15 * Math.sin(th * 3));
+    const ry = 0.22 * (1.0 + 0.12 * Math.cos(th * 2));
+    const x = Math.cos(th) * rx;
+    const y = Math.sin(th) * ry;
+    if(i===0) rootShape.moveTo(x, y);
+    else rootShape.lineTo(x, y);
+  }
+  return new T.ShapeGeometry(rootShape);
+}
+const meltMesh=new T.Mesh(makeMeltZoneGeo(),decalMat(0xff4a12,0.92));meltMesh.userData.part='melting';meltMesh.renderOrder=5;root.add(meltMesh);
+const meltGlow=new T.Mesh(makeMeltZoneGeo(),decalMat(0xff8820,0.35));meltGlow.renderOrder=4;root.add(meltGlow);
+
+/* MEANDERENDE KRATERPIJP & VERTAKKINGEN (SILLS EN DYKES) */
+const CON_SEGS=44; // 24 hoofdgang + 7 sill1 + 7 sill2 + 6 dyke1
+const conduitPos=new Float32Array(CON_SEGS*4*3);
+const conduitCol=new Float32Array(CON_SEGS*4*3);
+const conduitIdx=[];
+function addRibbonIndices(startSlice, numSlices){
+  for(let j=startSlice; j<startSlice+numSlices-1; j++){
+    for(let c=0; c<3; c++){
+      const a=j*4+c, b=a+1, d=(j+1)*4+c, e=d+1;
+      conduitIdx.push(a, b, d,  b, e, d);
+    }
+  }
+}
+addRibbonIndices(0, 24);   // Meanderende hoofdkraterpijp
+addRibbonIndices(24, 7);  // Sill 1 (linkerflank)
+addRibbonIndices(31, 7);  // Sill 2 (rechterflank)
+addRibbonIndices(38, 6);  // Dyke 1 (schuine toevoergang)
+
+const conduitGeo=new T.BufferGeometry();
+conduitGeo.setIndex(conduitIdx);
+conduitGeo.setAttribute('position',new T.BufferAttribute(conduitPos,3));
+conduitGeo.setAttribute('color',new T.BufferAttribute(conduitCol,3));
+const conduitMat=new T.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:0.96,depthTest:true,depthWrite:false,side:T.DoubleSide});
+const conduitMesh=new T.Mesh(conduitGeo,conduitMat);
+conduitMesh.userData.part='conduit';
+conduitMesh.renderOrder=5;
+root.add(conduitMesh);
+
+function updConduit(cGrow,zf){
+  conduitMesh.visible=cGrow>0.005;
+  if(!conduitMesh.visible)return;
+
+  const yBot=-1.55; // Bovenkant van de peervormige magmakamer bij y = -1.8
+  const yFinalTop=rightTop(XV,zf)-0.04;
+  if(yFinalTop<=yBot){conduitMesh.visible=false;return}
+
+  // De kraterpijp groeit geleidelijk van onder (yBot) omhoog richting het oppervlak (curTop)
+  const curTop=yBot+(yFinalTop-yBot)*cGrow;
+
+  const P=conduitPos,C=conduitCol;
+  const pulse=0.88+0.18*Math.sin(S.tt*4.5);
+  const eruptBoost=S.erupt>0?(0.24+0.26*Math.sin(S.tt*12)):0;
+
+  // Donkere basaltische stollingsrand
+  const wallR=clamp((0.36+0.14*pulse+eruptBoost)*cGrow,0,1);
+  const wallG=clamp((0.12+0.05*pulse)*cGrow,0,1);
+  const wallB=clamp(0.05*cGrow,0,1);
+
+  // Gloeiende vloeibare magmakern
+  const magmaR=clamp(1.0*cGrow,0,1);
+  const magmaG=clamp((0.40+0.22*pulse+eruptBoost*0.4)*cGrow,0,1);
+  const magmaB=clamp((0.08+0.14*pulse+eruptBoost*0.3)*cGrow,0,1);
+
+  const setSlice=(sliceIdx,xMid,yMid,width,isVert=true)=>{
+    const w=width*clamp(cGrow*1.3,0,1);
+    const wCore=w*0.52;
+    for(let c=0;c<4;c++){
+      const v=(sliceIdx*4+c)*3;
+      if(isVert){
+        const xs=[xMid-w/2, xMid-wCore/2, xMid+wCore/2, xMid+w/2];
+        P[v]=xs[c]; P[v+1]=yMid; P[v+2]=zf+0.021;
+      } else {
+        const ys=[yMid-w/2, yMid-wCore/2, yMid+wCore/2, yMid+w/2];
+        P[v]=xMid; P[v+1]=ys[c]; P[v+2]=zf+0.021;
+      }
+      if(c===0||c===3){
+        C[v]=wallR; C[v+1]=wallG; C[v+2]=wallB;
+      } else {
+        C[v]=magmaR; C[v+1]=magmaG; C[v+2]=magmaB;
+      }
+    }
+  };
+
+  // 1. Meanderende hoofdkraterpijp (24 slices van yBot naar curTop)
+  for(let j=0;j<24;j++){
+    const u=j/23;
+    const y=yBot+(curTop-yBot)*u;
+    const xMid=7.00+0.20*(u*cGrow)+0.04*Math.sin(u*Math.PI*3.0);
+    const w=0.38-0.16*u;
+    setSlice(j, xMid, y, w, true);
+  }
+
+  // 2. Sill 1: Horizontale intrusie in linkerflank (7 slices, splitst af rond y = 0.36)
+  const sill1Grow=clamp((curTop-0.36)/0.45,0,1);
+  for(let j=0;j<7;j++){
+    const u=j/6;
+    const x=7.05-0.80*u*sill1Grow;
+    const y=0.36+0.04*Math.sin(u*Math.PI*2.0);
+    const w=(0.13-0.07*u)*sill1Grow;
+    setSlice(24+j, x, y, w, false);
+  }
+
+  // 3. Sill 2: Horizontale intrusie in rechterflank (7 slices, splitst af rond y = 0.92)
+  const sill2Grow=clamp((curTop-0.92)/0.45,0,1);
+  for(let j=0;j<7;j++){
+    const u=j/6;
+    const x=7.16+0.94*u*sill2Grow;
+    const y=0.92-0.06*Math.sin(u*Math.PI*1.5);
+    const w=(0.12-0.06*u)*sill2Grow;
+    setSlice(31+j, x, y, w, false);
+  }
+
+  // 4. Dyke 1: Schuine toevoergang (6 slices, splitst af rond y = -0.75)
+  const dykeGrow=clamp((curTop-(-0.75))/0.50,0,1);
+  for(let j=0;j<6;j++){
+    const u=j/5;
+    const x=7.00-0.55*u*dykeGrow;
+    const y=-0.55-0.55*(1-(1-u)*dykeGrow);
+    const w=(0.12-0.05*u)*dykeGrow;
+    setSlice(38+j, x, y, w, true);
+  }
+
+  conduitGeo.attributes.position.needsUpdate=true;
+  conduitGeo.attributes.color.needsUpdate=true;
+}
+
+const NM=160,mgPos=new Float32Array(NM*3),mgU=new Float32Array(NM),mgJ=new Float32Array(NM*2);
+for(let i=0;i<NM;i++){mgU[i]=Math.random();mgJ[i*2]=(Math.random()-0.5)*0.16;mgJ[i*2+1]=(Math.random()-0.5)*0.16}
+const mgGeo=new T.BufferGeometry();mgGeo.setAttribute('position',new T.BufferAttribute(mgPos,3));
+const mgMat=new T.PointsMaterial({size:0.18,color:0xffa040,transparent:true,opacity:0.95,blending:T.AdditiveBlending,depthTest:true,depthWrite:false});
+const magmaPts=new T.Points(mgGeo,mgMat);magmaPts.frustumCulled=false;magmaPts.renderOrder=6;root.add(magmaPts);
+
+const NL=110,lvPos=new Float32Array(NL*3),lvVel=new Float32Array(NL*3),lvLife=new Float32Array(NL);
+for(let i=0;i<NL;i++){lvLife[i]=Math.random();lvPos[i*3+1]=-99}
+const lvGeo=new T.BufferGeometry();lvGeo.setAttribute('position',new T.BufferAttribute(lvPos,3));
+const lvMat=new T.PointsMaterial({size:0.16,color:0xff7a2a,transparent:true,opacity:0.95,blending:T.AdditiveBlending,depthWrite:false,clippingPlanes:[clip]});
+const lavaPts=new T.Points(lvGeo,lvMat);lavaPts.frustumCulled=false;root.add(lavaPts);
+
+function updMagma(dt){
+  if(S.right === 'col' || S.right === 'trans'){
+    meltMesh.visible = meltGlow.visible = false;
+    chamber.visible = chamberGlow.visible = false;
+    conduitMesh.visible = false;
+    magmaPts.visible = false;
+    lavaPts.visible = false;
+    lavaLight.intensity = 0;
+    S.erupt = 0;
+    return;
+  }
+  if(S.right === 'div'){
+    meltMesh.visible = meltGlow.visible = false;
+    chamber.visible = chamberGlow.visible = false;
+    conduitMesh.visible = false;
+    lavaPts.visible = false;
+    lavaLight.intensity = S.magma ? 0.8 : 0;
+    if(S.magma){
+      magmaPts.visible = true;
+      const riftY = divTop(0, S.zf);
+      for(let i=0; i<NM; i++){
+        mgU[i] = (mgU[i] + dt * 0.28 * S.speed) % 1;
+        const u = mgU[i];
+        const y = -5.0 + u * (riftY - (-5.0));
+        const spread = (1.0 - u * 0.72) * 0.85;
+        const x = (mgJ[i*2] * 2.2) * spread;
+        const z = S.zf - 0.1 + mgJ[i*2+1] * 0.8;
+        sp(mgPos, i, x, y, z);
+      }
+      mgGeo.attributes.position.needsUpdate = true;
+    } else {
+      magmaPts.visible = false;
+    }
+    return;
+  }
+  const tip=xTip();
+  const zf=S.zf;
+  const pulse=1+0.04*Math.sin(S.tt*4);
+
+  // 1. DYNAMISCHE SMELTZONE: Pas actief wanneer de duikende plaat ECHT diep in de hete asthenosfeermantel
+  //    penetreert (100-150 km diepte onder de vulkanische boog, S.p >= 0.52 en tip >= 6.0)!
+  //    Voorkomt dat de plaat te vroeg smelt terwijl hij nog in de ondiepe korst of het voorlandbekken zit.
+  const meltActive=S.magma && S.p>=0.52 && tip>=6.0 && Math.abs(zf)<2.2;
+  const xMelt=Math.min(6.6, tip-0.25);
+  const yMelt=slabTop(xMelt)+0.08; // Dynamisch verankerd op de duikende plaat in de diepe hete mantel!
+  const meltScale=meltActive?ss(0.52,0.70,S.p)*(0.92+0.08*Math.sin(S.tt*3.5)):0;
+
+  meltMesh.visible=meltGlow.visible=meltActive&&meltScale>0.01;
+  if(meltMesh.visible){
+    meltMesh.scale.set(meltScale,meltScale,1);
+    meltMesh.position.set(xMelt,yMelt,zf+0.015);
+    meltGlow.scale.set(meltScale*1.25,meltScale*1.25,1);
+    meltGlow.position.set(xMelt,yMelt,zf+0.012);
+    // Richting van de subducerende plaathelling volgen:
+    const slabSlope=Math.atan2(slabTop(xMelt+0.1)-slabTop(xMelt-0.1),0.2);
+    meltMesh.rotation.z=meltGlow.rotation.z=slabSlope;
+  }
+
+  // 2. MAGMAKAMER: Vult zich pas zodra het magma uit de diepe mantel opstijgt (S.p >= 0.55 en tip >= 6.2)
+  let chamberGrowth=0;
+  if(S.magma && S.p>=0.55 && tip>=6.2){
+    if(S.p<0.70){
+      chamberGrowth=0.45*ss(0.55,0.70,S.p); // Subtiel opzwellen van 0 naar 0.45
+    } else {
+      chamberGrowth=0.45+0.55*ss(0.70,0.88,S.p); // Doorgroeien naar 1.0 (volgroeide diapier)
+    }
+  }
+  const fChamber=Math.sqrt(Math.max(0,1-(zf/2.4)*(zf/2.4)))*chamberGrowth;
+  chamber.visible=chamberGlow.visible=fChamber>0.02;
+  if(chamber.visible){
+    chamber.scale.set(1.0*fChamber*pulse, 1.0*fChamber*pulse, 1);
+    chamber.position.set(7.0, -1.8, zf+0.015);
+    chamberGlow.scale.set(1.25*fChamber, 1.25*fChamber, 1);
+    chamberGlow.position.set(7.0, -1.8, zf+0.012);
+  }
+
+  // 3. KRATERPIJP: Pas laten groeien vanaf S.p >= 0.68 wanneer de magmakamer goed gevoed is
+  const cGrow=S.magma && tip>=7.2?ss(0.68,0.88,S.p):0;
+  updConduit(cGrow,zf);
+
+  // 4. OPSTIJGENDE MAGMADEELTJES (Bellen stijgen vanaf contactpunt op de plaat omhoog)
+  const cy=rightTop(XV,zf);
+  const near=Math.max(0,1-Math.abs(zf)/1.3);
+  const ptsVis=meltActive&&near>0.02&&chamberGrowth>0.02;
+  magmaPts.visible=ptsVis;
+  mgMat.opacity=0.95*clamp(chamberGrowth*1.5,0,1)*near;
+
+  if(ptsVis){
+    // Particle curve: begint ALTIJD exact op de smeltzone van de duikende plaat
+    const pts=[
+      new T.Vector3(xMelt, yMelt, 0),
+      new T.Vector3(xMelt+(7.0-xMelt)*0.45, yMelt+(-1.8-yMelt)*0.45+0.12, 0),
+      new T.Vector3(7.0, -1.8, 0)
+    ];
+
+    if(cGrow>0.02){
+      // Als de kraterpijp groeit, lopen de magmadeeltjes mee omhoog in de pijp tot het huidige front
+      const curTop=-1.55+(cy-0.05-(-1.55))*cGrow;
+      pts.push(
+        new T.Vector3(7.04+0.08*cGrow, -1.55+(curTop-(-1.55))*0.4, 0),
+        new T.Vector3(7.00+0.20*cGrow, curTop, 0)
+      );
+    }
+
+    const cur=new T.CatmullRomCurve3(pts),v=new T.Vector3();
+    const sp0=(S.playing?dt*S.speed:0)*0.09;
+    for(let i=0;i<NM;i++){
+      mgU[i]=(mgU[i]+sp0)%1;
+      cur.getPoint(mgU[i],v);
+      mgPos[i*3]=v.x+mgJ[i*2];
+      mgPos[i*3+1]=v.y+mgJ[i*2+1];
+      mgPos[i*3+2]=zf+0.03;
+    }
+    mgGeo.attributes.position.needsUpdate=true;
+  }
+
+  // 5. UITBARSTING: Alleen in Fase 4 (S.p >= 0.75) wanneer de kraterpijp het oppervlak breekt en de stratovulkaan groeit
+  S.erupt=S.magma && cGrow>0.80?ss(0.75,0.92,S.p):0;
+  const cr=cy;
+  for(let i=0;i<NL;i++){
+    if(S.erupt<=0){lvPos[i*3+1]=-99;continue}
+    if(S.playing){
+      lvLife[i]+=dt*S.speed*0.6;
+      if(lvLife[i]>=1||lvPos[i*3+1]<cr-0.1){
+        if(Math.random()<S.erupt){
+          lvLife[i]=Math.random()*0.2;
+          lvPos[i*3]=XV+(Math.random()-0.5)*0.24;
+          lvPos[i*3+1]=cr+0.05;
+          lvPos[i*3+2]=(Math.random()-0.5)*0.3;
+          lvVel[i*3]=(Math.random()-0.5)*1.6;
+          lvVel[i*3+1]=2+Math.random()*2.6;
+          lvVel[i*3+2]=(Math.random()-0.5)*1.2;
+        }else lvPos[i*3+1]=-99;
+      }else{
+        const d=dt*S.speed;lvVel[i*3+1]-=4.6*d;
+        lvPos[i*3]+=lvVel[i*3]*d;lvPos[i*3+1]+=lvVel[i*3+1]*d;lvPos[i*3+2]+=lvVel[i*3+2]*d;
+      }
+    }
+  }
+  lvGeo.attributes.position.needsUpdate=true;
+  lavaLight.position.set(XV,cr+0.8,0.5);lavaLight.intensity=S.erupt*(1.4+0.4*Math.sin(S.tt*9));
+}
+
+/* ---------- aardbevingen & spanningsopbouw ---------- */
+const events=[],scars=[];
+const ringGeo=new T.RingGeometry(0.9,1,48),flatGeo=new T.RingGeometry(0.88,1,48);flatGeo.rotateX(-Math.PI/2);
+const NS=40,scPos=new Float32Array(NS*3),scGeo=new T.BufferGeometry();scGeo.setAttribute('position',new T.BufferAttribute(scPos,3));scGeo.setDrawRange(0,0);
+const scPts=new T.Points(scGeo,new T.PointsMaterial({size:0.16,color:0xff3b2e,depthWrite:false,transparent:true,opacity:0.95}));scPts.frustumCulled=false;scPts.renderOrder=7;root.add(scPts);
+const $=id=>document.getElementById(id);
+const toastEl=$('toast');let toastT=0;
+function toast(t){toastEl.textContent=t;toastEl.classList.add('on');toastT=3.2}
+
+function quake(){
+  if (S.right === 'trans') {
+    // Transformbreuk (San Andreas-type): zware ondiepe aardbevingen langs de breuklijn
+    const x = 0.0;
+    const z = S.zf - 0.5 - Math.random() * 5.0;
+    const topY = transTop(x, z);
+    const depth = 0.25 + Math.random() * 1.4;
+    const y = topY - depth;
+    const mag = Math.round((6.8 + Math.random() * 1.3) * 10) / 10;
+
+    const ev = { x, y, age: 0, rings: [], flat: null };
+    for (let k = 0; k < 2; k++) {
+      const m = new T.Mesh(ringGeo, decalMat(0xff2211, 1));
+      m.renderOrder = 8;
+      root.add(m);
+      ev.rings.push(m);
+    }
+    ev.flat = new T.Mesh(flatGeo, decalMat(0xff9922, 1));
+    ev.flat.position.set(x, topY + 0.06, z);
+    ev.flat.renderOrder = 8;
+    root.add(ev.flat);
+
+    events.push(ev);
+    scars.push([x, y]);
+    if (scars.length > NS) scars.shift();
+    lastQuake = { x, y };
+    S.shake = 1.3;
+    const km = Math.round(depth * 15 / 2) * 2;
+    $('quakeTxt').textContent = 'Laatste beving: ' + String(mag).replace('.', ',');
+    toast('Zware ondiepe aardbeving (kracht ' + String(mag).replace('.', ',') + ') langs de transformbreuk op ' + km + ' km diepte!');
+    return;
+  }
+  if (S.right === 'div') {
+    // Geen aardbevingen bij divergentie (op verzoek uitgeschakeld)
+    return;
+  }
+  if (S.right === 'col') {
+    if (S.p < 0.25) return;
+    // Aardbevingen uitsluitend op het botsingsvlak waar de twee continentale platen elkaar raken:
+    const x = -1.1 + Math.random() * 2.2;
+    const topY = colTop(x, S.zf);
+    const mohoY = colMoho(x, S.zf, topY);
+    // Op de actieve overschuivings- en botsingsbreuken tussen de platen:
+    const y = topY - 0.35 - Math.random() * (Math.max(0.4, (topY - mohoY) * 0.65));
+    const mag = Math.round((5.8 + Math.random() * 2.4) * 10) / 10;
+    const z = S.zf - 0.5;
+
+    const ev={x,y,age:0,rings:[],flat:null};
+    for(let k=0;k<2;k++){const m=new T.Mesh(ringGeo,decalMat(0xff4a3a,1));m.renderOrder=8;root.add(m);ev.rings.push(m)}
+    ev.flat=new T.Mesh(flatGeo,decalMat(0xff8a3a,1));
+    ev.flat.position.set(x, topY + 0.06, z);
+    ev.flat.renderOrder=8;
+    root.add(ev.flat);
+
+    events.push(ev);
+    scars.push([x, y]);
+    if(scars.length>NS) scars.shift();
+    lastQuake = {x, y};
+    S.shake = 1;
+    const km = Math.round((-y) * 35 / 5) * 5;
+    $('quakeTxt').textContent = 'Laatste beving: ' + String(mag).replace('.', ',');
+    toast('Zware aardbeving (kracht ' + String(mag).replace('.', ',') + ') op het botsingscontactvlak tussen beide platen op ' + km + ' km diepte!');
+    return;
+  }
+  const tip = xTip();
+  // Bevingen pas zodra de platen elkaar daadwerkelijk raken:
+  if (tip <= CONT_TIP + 0.2) return;
+
+  // Seismogene megathrust-zone: EXACT langs het contactvlak waar de platen elkaar fysiek raken!
+  // In het oceaanscenario reikt de overrijdende oceanische plaat tot x = 0.0 (y = -2.3, basis van de oceanische lithosfeer).
+  // In het continentscenario reikt de dikke continentale plaat tot x = 3.8 (y = -4.8, basis van de continentale lithosfeer).
+  // Daaronder duikt de plaat vrij de asthenosfeer in (geen contact met een andere plaat)!
+  const maxContactX = S.right === 'ocean' ? 0.0 : 3.8;
+  const xMin = CONT_TIP;
+  const xMax = Math.min(tip - 0.25, maxContactX);
+  if (xMax <= xMin) return;
+
+  const x = xMin + Math.random() * (xMax - xMin);
+  // Strikte eis: aardbevingen mogen UITSLUITEND plaatsvinden waar de platen elkaar raken!
+  // Dus exact op het contactgrensvlak y = slabTop(x) (+0.02 voor visuele scherpte op het breukvlak):
+  const y = slabTop(x) + 0.02;
+  const mag = Math.round((5.2 + Math.random() * 2.6) * 10) / 10;
+  const z = S.zf - 0.5;
+
+  const ev={x,y,age:0,rings:[],flat:null};
+  for(let k=0;k<2;k++){const m=new T.Mesh(ringGeo,decalMat(0xff4a3a,1));m.renderOrder=8;root.add(m);ev.rings.push(m)}
+  ev.flat=new T.Mesh(flatGeo,decalMat(0xff8a3a,1));ev.flat.position.set(x,surfY(x,z)+0.06,z);ev.flat.renderOrder=8;root.add(ev.flat);
+  events.push(ev);scars.push([x,y]);if(scars.length>NS)scars.shift();
+  lastQuake={x,y};S.shake=1;
+  const km=Math.round(-y*25/5)*5;
+  $('quakeTxt').textContent='Laatste beving: '+String(mag).replace('.',',');
+  const msgType = S.right === 'ocean' ? 'het oceanische plaatcontactvlak' : 'het plaatcontactvlak';
+  toast('Megathrust-aardbeving (kracht '+String(mag).replace('.',',')+') op '+msgType+' op '+km+' km diepte!');
+  // Start golfbeweging / tsunami als de beving onder water plaatsvindt
+  if (surfY(x, z) < 0.0) {
+    triggerTsunami(x, z, mag);
+  }
+}
+let lastQuake=null;
+
+function clearQuakes(){
+  for(let i=events.length-1;i>=0;i--){
+    const e=events[i];
+    if(e.rings){
+      e.rings.forEach(m=>{
+        m.visible=false;
+        root.remove(m);
+        if(m.material)m.material.dispose();
+      });
+    }
+    if(e.flat){
+      e.flat.visible=false;
+      root.remove(e.flat);
+      if(e.flat.material)e.flat.material.dispose();
+    }
+  }
+  events.length=0;
+
+  // Grondige sweep van root voor eventuele achtergebleven ring- of flatGeo-meshes:
+  for(let i=root.children.length-1;i>=0;i--){
+    const c=root.children[i];
+    if(c.geometry===ringGeo||c.geometry===flatGeo){
+      c.visible=false;
+      root.remove(c);
+      if(c.material)c.material.dispose();
+    }
+  }
+}
+
+function updQuakes(dt){
+  const show=S.quake;
+  if (S.right === 'div') {
+    S.stress = 0;
+    $('meter').style.width = '0%';
+    $('quakeTxt').textContent = 'Rustige plaatgrens (geen bevingen)';
+    return;
+  }
+  if(S.playing&&S.p>0.03){S.stress+=dt*S.speed/7;if(S.stress>=1){S.stress=0;if(show)quake()}}
+  for(let i=events.length-1;i>=0;i--){
+    const e=events[i];
+    e.age+=dt;
+    const done=e.age>2.3;
+    e.rings.forEach((m,k)=>{
+      const a=e.age-k*0.4;
+      m.visible=show&&a>0&&!done;
+      if(a>0){
+        const s=0.12+a*1.7;
+        m.scale.set(s,s,1);
+        m.material.opacity=Math.max(0,1-a/1.8);
+        m.position.set(e.x,e.y,S.zf+0.04);
+      }
+    });
+    if(e.flat){
+      e.flat.visible=show&&!done;
+      const s=0.2+e.age*1.4;
+      e.flat.scale.set(s,1,s);
+      e.flat.material.opacity=Math.max(0,1-e.age/2.2);
+    }
+    if(done){
+      e.rings.forEach(m=>{
+        m.visible=false;
+        root.remove(m);
+        if(m.material)m.material.dispose();
+      });
+      if(e.flat){
+        e.flat.visible=false;
+        root.remove(e.flat);
+        if(e.flat.material)e.flat.material.dispose();
+      }
+      events.splice(i,1);
+    }
+  }
+  
+  // Verwijder beving-littekens die buiten het contactvlak tussen beide platen vallen
+  if (S.right === 'col') {
+    for(let i=scars.length-1; i>=0; i--){
+      if(scars[i][0] < -1.4 || scars[i][0] > 1.4) scars.splice(i, 1);
+    }
+  } else {
+    const curTip = xTip();
+    const maxContactX = S.right === 'ocean' ? 0.0 : 3.8;
+    for(let i=scars.length-1; i>=0; i--){
+      if(scars[i][0] > Math.min(curTip, maxContactX) || scars[i][0] < CONT_TIP) scars.splice(i, 1);
+    }
+  }
+  for(let i=0;i<scars.length;i++)sp(scPos,i,scars[i][0],scars[i][1],S.zf+0.035);
+  scGeo.setDrawRange(0,show?scars.length:0);scGeo.attributes.position.needsUpdate=true;
+  S.shake=Math.max(0,S.shake-dt/1.3);const a=0.07*S.shake;root.position.set((Math.random()-0.5)*a,(Math.random()-0.5)*a,0);
+  $('meter').style.width=Math.min(100,S.stress*100)+'%';
+  if(toastT>0){toastT-=dt;if(toastT<=0)toastEl.classList.remove('on')}
+}
+
+/* ---------- camera met soepele overgangen ---------- */
+const cam={az:0.5,el:0.36,dist:21,tx:0.8,ty:-1.6,tz:0},tgt={az:0.5,el:0.36,dist:21,tx:0.8,ty:-1.6,tz:0};
+const VIEWS={cross:{az:0,el:0.04,dist:21,tx:0.8,ty:-1.6,tz:0},angle:{az:0.5,el:0.36,dist:21,tx:0.8,ty:-1.6,tz:0},top:{az:0.15,el:1.28,dist:20,tx:1.2,ty:-1.4,tz:0},zoom:{az:0.25,el:0.14,dist:11,tx:6.5,ty:-1.8,tz:0}};
+function updCam(dt){
+  const k=1-Math.exp(-dt*6);for(const f of['az','el','dist','tx','ty','tz'])cam[f]+=(tgt[f]-cam[f])*k;
+  const fit=Math.max(1,1.55/camera.aspect),d=cam.dist*fit;
+  camera.position.set(cam.tx+d*Math.cos(cam.el)*Math.sin(cam.az),cam.ty+d*Math.sin(cam.el),cam.tz+d*Math.cos(cam.el)*Math.cos(cam.az));
+  camera.lookAt(cam.tx,cam.ty,cam.tz);
+}
+function resize(){const w=canvas.clientWidth,h=canvas.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
+window.addEventListener('resize',resize);
+const keysDown=new Set();
+const isPanKey=()=>{
+  const activeTag=document.activeElement?document.activeElement.tagName:'';
+  if(activeTag==='TEXTAREA'||activeTag==='INPUT')return false;
+  return keysDown.has('KeyA')||keysDown.has('a')||keysDown.has('ShiftLeft')||keysDown.has('ShiftRight')||keysDown.has('shift');
+};
+
+function applyPan(dx,dy){
+  const fovFactor=2*Math.tan(38*Math.PI/360)/(canvas.clientHeight||800);
+  const s=cam.dist*fovFactor;
+  const cosAz=Math.cos(cam.az),sinAz=Math.sin(cam.az);
+  const cosEl=Math.cos(cam.el),sinEl=Math.sin(cam.el);
+  const rx=cosAz,rz=-sinAz;
+  const ux=-sinAz*sinEl,uy=cosEl,uz=-cosAz*sinEl;
+  tgt.tx+=(-dx*rx + dy*ux)*s;
+  tgt.ty+=(-dx*0  + dy*uy)*s;
+  tgt.tz+=(-dx*rz + dy*uz)*s;
+  cam.tx=tgt.tx;cam.ty=tgt.ty;cam.tz=tgt.tz;
+}
+
+const ptrs=new Map();let pinch=0,down=null,lastHoverPos=null;
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+
+canvas.addEventListener('pointerdown',e=>{
+  canvas.setPointerCapture(e.pointerId);
+  const panActive=(e.button===2)||(e.button===1)||isPanKey()||e.shiftKey;
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY,btn:e.button});
+  down={x:e.clientX,y:e.clientY,t:performance.now(),moved:false,btn:e.button,wasPan:panActive};
+  if(ptrs.size===2)pinch=0;
+  if(panActive)canvas.style.cursor='grabbing';
+});
+
+canvas.addEventListener('pointermove',e=>{
+  // Modus A: Vinger over trackpad bewegen met toets 'A' of 'Shift' ingedrukt (zonder te hoeven klikken!)
+  if(ptrs.size===0){
+    if(isPanKey()){
+      canvas.style.cursor='grab';
+      if(lastHoverPos){
+        const dx=e.clientX-lastHoverPos.x,dy=e.clientY-lastHoverPos.y;
+        if(Math.hypot(dx,dy)>0.5){
+          applyPan(dx,dy);
+          canvas.style.cursor='grabbing';
+        }
+      }
+      lastHoverPos={x:e.clientX,y:e.clientY};
+      return;
+    }
+    lastHoverPos={x:e.clientX,y:e.clientY};
+    return;
+  }
+
+  // Modus B: Klikken en slepen
+  lastHoverPos={x:e.clientX,y:e.clientY};
+  const p=ptrs.get(e.pointerId);if(!p)return;
+  const dx=e.clientX-p.x,dy=e.clientY-p.y;
+  p.x=e.clientX;p.y=e.clientY;
+  if(down&&Math.hypot(e.clientX-down.x,e.clientY-down.y)>5)down.moved=true;
+  if(ptrs.size===1){
+    const isPan=(e.buttons===2)||(p.btn===2)||(e.buttons===4)||(p.btn===1)||isPanKey()||e.shiftKey;
+    if(isPan){
+      applyPan(dx,dy);
+      canvas.style.cursor='grabbing';
+    } else {
+      tgt.az-=dx*0.006;
+      tgt.el=clamp(tgt.el+dy*0.006,-0.35,1.5);
+      cam.az=tgt.az;cam.el=tgt.el;
+    }
+  }
+  else if(ptrs.size===2){
+    const [a,b]=[...ptrs.values()],d=Math.hypot(a.x-b.x,a.y-b.y);
+    if(pinch){tgt.dist=clamp(tgt.dist*pinch/d,6,45);cam.dist=tgt.dist}
+    pinch=d;down&&(down.moved=true);
+  }
+});
+
+const endPtr=e=>{ptrs.delete(e.pointerId);if(ptrs.size<2)pinch=0};
+canvas.addEventListener('pointerup',e=>{
+  const wasClick=down&&!down.moved&&performance.now()-down.t<600&&ptrs.size===1&&down.btn===0&&!down.wasPan;
+  endPtr(e);
+  if(isPanKey())canvas.style.cursor='grab';
+  else canvas.style.cursor='';
+  if(wasClick)pick(e);
+});
+canvas.addEventListener('pointerleave',()=>{
+  lastHoverPos=null;
+  if(!isPanKey())canvas.style.cursor='';
+});
+canvas.addEventListener('pointercancel',e=>{
+  endPtr(e);
+  lastHoverPos=null;
+  canvas.style.cursor='';
+});
+canvas.addEventListener('wheel',e=>{e.preventDefault();tgt.dist=clamp(tgt.dist*Math.exp(e.deltaY*0.001),6,45);cam.dist=tgt.dist},{passive:false});
+
+/* ---------- cameravlucht / soepele focus naar hotspot ---------- */
+function flyToHS(pos, dist=14, az=0.45, el=0.28){
+  tgt.tx = pos[0];
+  tgt.ty = pos[1];
+  tgt.tz = pos[2] !== undefined ? pos[2] : S.zf;
+  if(dist !== undefined) tgt.dist = dist;
+  if(az !== undefined) tgt.az = az;
+  if(el !== undefined) tgt.el = el;
+}
+
+/* ---------- didactische database (3 tabbladen per begrip: zien, weten, denken) ---------- */
+const INFO={
+  oc:['Plaatdeel','Oceanische korst (Basalt)',
+    'De zware buitenlaag van de oceanische plaat. Hij bestaat uit massief basalt (donker vulkanisch gesteente) met een dun toplaagje mariene sedimenten erbovenop. Gemiddeld zo’n 7 km dik.',
+    'Omdat basalt compacter en zwaarder is dan het lichte graniet van een continent, duikt de oceanische korst altijd de diepte in.',
+    'Waarom zakt oceanische korst wél weg in de aardmantel, maar continentale korst nooit?'],
+  cc:['Plaatdeel','Continentale plaat (Graniet)',
+    'De korst van een continent is veel dikker (30 tot 70 km, hier visueel ~35 km) en lichter van gewicht dan oceanische korst. Ze bestaat grotendeels uit graniet en sedimentlagen.',
+    'Omdat continentale korst lichter is, blijft hij drijven op de mantel en zakt hij nooit weg.',
+    'Wat zou er volgens jou gebeuren als twee continentale platen (twee stukken graniet) tegen elkaar botsen in plaats van oceaan tegen continent?'],
+  mantle:['Binnen in de aarde','Asthenosfeer (Plastische mantel ~1300 °C)',
+    'Gloeiend heet gesteente (~1300 °C) dat niet dun-vloeibaar is maar heel langzaam plastisch stroomt (convectiestromen). De tektonische platen drijven en schuiven hieroverheen.',
+    'De aardmantel is ongeveer 2900 km dik en beslaat ruim 80% van het totale volume van de aarde.',
+    'Waarom kunnen we de stromingen in de mantel goed vergelijken met dikke soep die zachtjes kookt in een pan op het fornuis?'],
+  wedge:[
+    'Landvorm',
+    'Accretiewig (Aangroeiprisma)',
+    'Een ophoping van zand, klei en zachte zeebodemsedimenten. De duikende oceanische plaat schuift onder het continent door, maar schraapt de bovenste laag sedimenten af tegen de rand van de continentale plaat (zoals sneeuw voor een sneeuwschep).',
+    'De accretiewig kan na miljoenen jaren zo hoog opstuwen dat er heuvelruggen of eilanden ontstaan vlak vóór de kust!',
+    'Waarom duikt het zachte zand en slib op de zeebodem meestal niet mee de hete mantel in?'
+  ],
+  melting:[
+    'Geologisch proces',
+    'Smeltzone (100–150 km diepte)',
+    'De zone diep in de aarde waar de weggedoken oceanische korst door de enorme hitte van de asthenosfeer en de aanwezigheid van meegesleurd water begint te smelten.',
+    'Omdat gesmolten gesteente uitzet en daardoor een lagere dichtheid heeft dan het vaste gesteente eromheen, stijgt het als hete magmabellen (diapieren) omhoog.',
+    'Beredeneer waarom de smeltzone zich pas op grote afstand van de kustlijn onder het continent bevindt.'
+  ],
+  trench:['Landvorm','Diepzeetrog (>10 km diepte)',
+    'Een enorme kloof op de oceaanbodem precies op de buigingsnaad waar de oceanische plaat de diepte in getrokken wordt.',
+    'De Marianentrog bij Japan/Filipijnen is bijna 11 km diep. Als je de Mount Everest op de bodem zou zetten, steekt er nog ruim 2 km water bovenuit!',
+    'Waarom ontstaat een trog juist vlak vóór de kust van een continent of eilandenboog en nooit midden op de oceaan?'],
+  subd:['Plaatgrens','Subductiezone',
+    'Hier duikt de zwaardere basaltische plaat onder het continent de mantel in. De platen klemmen in elkaar vast als een gespannen veer; als de wrijving plotseling bezwijkt ontstaat een zware aardbeving.',
+    'Bijna alle verwoestende aardbevingen en zware tsunami’s op aarde ontstaan langs subductiezones, zoals de Ring van Vuur rondom de Grote Oceaan.',
+    'Leg uit waarom de metafoor van een "gespannen veer" zo goed past bij de spanningsopbouw in een subductiezone.'],
+  quake:['Natuurramp','Aardbevingshaard (Hypocentrum)',
+    'De plek diep in de aarde waar het klemzittende breukvlak losschiet en seismische schokgolven uitzendt. De haarden liggen trapsgewijs dieper naarmate de plaat verder wegzakt.',
+    'Het punt loodrecht boven de haard aan het aardoppervlak noemen we het epicentrum. Hier is de schok meestal het hevigst.',
+    'Beredeneer waarom aardbevingshaarden in Japan steeds dieper onder de grond liggen naarmate je verder landinwaarts kijkt.'],
+  chamber:['Vulkanisme','Magmakamer (Diapier/Pluton)',
+    'Een ondergronds reservoir vol gesmolten gesteente (magma). Het hete magma is lichter dan het omringende vaste gesteente en borrelt daarom omhoog als een peervormige diapier.',
+    'Water dat in de duikende zeebodem meereist verlaagt het smeltpunt van het mantelgesteente op 100-150 km diepte. Dit proces heet flux melting.',
+    'Waarom smelt de duikende plaat pas op 100 tot 150 km diepte en niet al meteen bij de trog?'],
+  conduit:['Vulkanisme','Kraterpijp & Vertakkingen (Dykes/Sills)',
+    'Het centrale toevoerkanaal en de zijwaartse vertakkingen (horizontale sills en schuine dykes) waarlangs het magma vanuit de diepgelegen magmakamer met grote druk omhoog geperst wordt naar de krater.',
+    'Als het taaie andesitische magma in de kraterpijp stolt na een eruptie, ontstaat een keiharde vulkanische prop. Hierdoor kan de gasdruk bij een volgende uitbarsting huizenhoog oplopen!',
+    'Waarom is een vulkaan met een gestolde lavaprop in de kraterpijp vaak gevaarlijker voor omwonenden dan een open vulkaan?'],
+  volc:['Natuurramp','Stratovulkaan (Vulkanische boog)',
+    'Een steile, kegelvormige vulkaan met een diepe krater, opgebouwd uit afwisselende lagen gestolde lava en vulkanische as (strata).',
+    'De beroemde vulkanen van de Andes en berg Fuji in Japan zijn stratovulkanen. Ze staan bekend om hun explosieve uitbarstingen met gloedwolken (pyroclastische stromen).',
+    'Waarom barst een stratovulkaan bij een subductiezone veel explosiever uit dan een schildvulkaan op Hawaï of IJsland?'],
+  volcO:['Natuurramp','Vulkanisch eiland',
+    'Als een oceanische plaat onder een andere oceanische plaat duikt, groeien vulkanen vanaf de zeebodem tot ze boven het water uitsteken. Zo ontstaat een eilandenboog (zoals Japan of Indonesië).',
+    'Japan is op deze manier ontstaan uit zo’n vulkanische eilandenboog.',
+    'Waarom liggen vulkanische eilandenbogen vaak in een gebogen boogvorm in plaats van een rechte lijn?'],
+  mount:['Landvorm','Plooiingsgebergte (Andes-type)',
+    'Door de enorme zijwaartse druk van de botsende platen wordt het continentale land samengeperst en omhoog geplooid tot bergruggen en toppen op ruime afstand van de trog.',
+    'De Andes in Zuid-Amerika is met ruim 7.000 km het langste plooiingsgebergte op land ter wereld, ontstaan door subductie van de oceanische Nazcaplaat.',
+    'Hoe kan een botsing die diep op de oceaanbodem begint, uiteindelijk bergen vormen met toppen van kilometers boven zeeniveau?'],
+  mountCol:['Landvorm','Plooiingsgebergte (Himalaya)',
+    'Twee continentale platen met dezelfde lage dichtheid die tegen elkaar botsen. Omdat geen van beide kan zinken, wordt de korst verfrommeld en kilometers hoog opgestuwd.',
+    'De Mount Everest groeit nog steeds enkele millimeters per jaar doordat India met 5 cm per jaar tegen Eurazië blijft botsen!',
+    'Beredeneer waarom er bij de Himalaya wél verwoestende aardbevingen voorkomen, maar géén vulkanen ontstaan.'],
+  rootCol:['Diepe aarde','Korst- & Lithosfeerwortel (Isostasie)',
+    'Een enorme verdikking van de korst én de lithosfeermantel aan de onderkant. Net zoals het gebergte hoog de lucht in rijst, wordt de onderkant van de stijve lithosfeer als een diepe "kiel" of omgekeerd gebergte kilometers ver de mantel in geduwd om isostatisch in evenwicht te blijven.',
+    'Onder Tibet en de Himalaya reikt deze gecombineerde lithosfeerwortel wel 200 tot 250 km diep de mantel in!',
+    'Leg uit waarom een hoog gebergte zoals de Himalaya volgens het principe van isostasie (de ijsbergmetafoor) zowel kilometers omhoog moet rijzen als diep de mantel in moet worden geduwd.'],
+  ocCol:['Plaatdeel','Continentale plaat (Botsend continent)',
+    'Een dikke continentale plaat (zoals het Indische subcontinent) die met hoge snelheid botst tegen een ander continent. De lichte granietsamenstelling voorkomt dat de plaat in de mantel zinkt.',
+    'Voorafgaand aan de botsing lag hier de Tethys-oceaan. Die is in tientallen miljoenen jaren tijd volledig dichtgedrukt!',
+    'Waarom kan een continentale plaat door zijn lichte granietsamenstelling niet subduceren in de aardmantel?'],
+  fossils:['Geologisch fenomeen','Vis- en zeefossielen op 8 km hoogte',
+    'Bovenop de hoogste toppen van de Himalaya (zoals de top van Mount Everest op 8.848 m) vinden bergbeklimmers kalksteen met fossielen van vissen, schelpen en ammonieten!',
+    'Vóór de botsing lag hier de Tethys-oceaan vol zeeleven. Toen India tegen Azië botste, sloot de oceaan. Het zachte mariene kalksediment werd door de gigantische tektonische druk samengeperst tot massieve kalksteen en kilometers hoog de lucht in geplooid.',
+    'Waarom is het vinden van visfossielen op bergtoppen een van de belangrijkste bewijzen voor platentektoniek?'],
+  oceanCol:['Oeroceaan','Tethys-oceaan tussen de continenten',
+    'In de beginsituatie scheidt een oeroceaan de twee continentale platen. Op de zeebodem leven vissen en schelpdieren, en hopen zich dikke lagen kalk- en kleisedimenten op.',
+    'Door de nadering van de continenten wordt dit oceaanbekken steeds smaller en wordt het water verdrongen. De zachte sedimenten worden niet vernietigd in de diepte, maar tussen de platen geklemd en versteend.',
+    'Wat verwacht je dat er met de zachte zand- en kleilagen op deze zeebodem gebeurt zodra de massieve continenten elkaar raken?'],
+  sea:['Aarde','Oceaanwater (Zeeniveau)',
+    'Het water van de oceaan blijft aan het oppervlak op zeeniveau (y = 0) en vult het oceaanbassin en de diepzeetrog. Het water duikt NIET als laag mee de aarde in; alleen het gesteente subduceert.',
+    'Wanneer de zeebodem bij een zware aardbeving plotseling meters omhoog veert, wordt de hele waterkolom opgetild. Dit veroorzaakt een tsunami die met 800 km/u over de oceaan raast.',
+    'Waarom merk je op een schip midden op de diepe oceaan bijna niets van een passerende tsunami, maar is hij bij de kust levensgevaarlijk?'],
+  contL:['Plaatdeel','Drijvend continent (West)',
+    'Het westelijke continent dat door platentektoniek langzaam naar links beweegt doordat de platen uit elkaar drijven. Hierdoor wordt de tussenliggende oceaan steeds breder.',
+    'Noord-Amerika en Europa zaten zo\'n 200 miljoen jaar geleden aan elkaar vast in één groot supercontinent: Pangea.',
+    'Bedenk hoe overeenkomstige fossielen en gesteentelagen op verschillende continenten bewijzen dat deze vroeger aan elkaar vastzaten.'],
+  contR:['Plaatdeel','Drijvend continent (Oost)',
+    'Het oostelijke continent dat naar rechts wegdrijft van de mid-oceanische rug.',
+    'De kustlijnen van Zuid-Amerika en Afrika passen als puzzelstukken in elkaar langs de Atlantische Oceaan.',
+    'Waarom blijven de continenten drijven op de aardmantel terwijl de zeebodem ertussen groeit?'],
+  mor:['Landvorm','Mid-oceanische rug (MOR)',
+    'Een reusachtige onderzeese bergketen op de oceaanbodem, gevormd doordat twee tektonische platen uit elkaar bewegen en magma vanuit de mantel omhoog stroomt en stolt.',
+    'De Mid-Atlantische Rug is meer dan 15.000 km lang en vormt de langste aaneengesloten bergketen op aarde!',
+    'Waarom is de oceaanbodem bij de mid-oceanische rug hoger dan de diepere zeebodem verderop?'],
+  newCrust:['Plaatdeel','Nieuwe oceanische korst (Basalt)',
+    'Wanneer de platen uit elkaar bewegen, stolt het opstijgende magma op de zeebodem tot vers basalt. Zo ontstaat er continu nieuwe oceanische korst.',
+    'Omdat hier steeds nieuwe korst bijkomt, noemen we dit een constructieve plaatgrens.',
+    'Als er bij de mid-oceanische ruggen steeds nieuwe korst ontstaat, waarom wordt de aarde dan toch niet steeds groter?'],
+  upwell:['Binnen in de aarde','Opstijgend magma (Decompressie)',
+    'Heet vast mantelgesteente stijgt langzaam op onder de scheurzone. Doordat de druk van de platen wegvalt (decompressie), smelt het gesteente tot vloeibaar magma.',
+    'Het opstijgende magma heeft een temperatuur van ongeveer 1200 tot 1300 °C.',
+    'Leg uit waarom gesteente kan smelten door een afname in druk, zelfs als de temperatuur gelijk blijft.'],
+  fault:['Plaatgrens','Transformbreuk (Zijschuiving)',
+    'Een breuklijn waar twee tektonische platen horizontaal langs elkaar heen schuiven. Er wordt geen korst gemaakt en geen korst vernietigd (conservatieve plaatgrens).',
+    'De San Andreasbreuk in Californië is meer dan 1200 km lang en veroorzaakt regelmatig zware aardbevingen.',
+    'Waarom komen er bij een zuivere transformbreuk wél zware aardbevingen voor, maar géén vulkanen?'],
+  houses:['Landschap','Bebouwing & Dorpen (Verschuiving)',
+    'Doordat de grond aan weerszijden van de breuklijn in tegengestelde richtingen schuift, raken wegen, omheiningen en dorpen ten opzichte van elkaar versprongen.',
+    'Tijdens een zware aardbeving kan het landschap langs de breuk in enkele seconden meerdere meters zijwaarts verspringen!',
+    'Wat voor gevaar levert een plotselinge zijwaartse grondverplaatsing op voor huizen en ondergrondse leidingen?'],
+  road:['Landschap','Verbroken & Versprongen weg',
+    'Een weg die loodrecht over de breuklijn is aangelegd, breekt doormidden en schuift uit elkaar.',
+    'Versprongen wegen, beken en hekwerken zijn in het landschap het duidelijkste bewijs van actieve zijwaartse plaatbeweging.',
+    'Hoe kun je aan een versprongen hek of weg zien welke kant beide platen op bewegen?'],
+  arrow:['Beweging','Plaatbeweging (Drijfkracht)',
+    'De pijlen tonen de richting waarin de tektonische platen naar elkaar toe bewegen. In werkelijkheid gaat dit met enkele centimeters per jaar (even snel als je nagels groeien).',
+    'De drijvende kracht achter plaatbeweging is de zwaartekracht (slab pull: zware duikende plaat trekt) en warmtestromen in de aarde.',
+    'Wat drijft de tektonische platen aan om te bewegen?']
+};
+
+/* ---------- interactieve speurtocht (didactiek naar westfront) ---------- */
+const QUESTS=[
+  {
+    target:'trench',
+    cand:['trench','oc','subd','wedge'],
+    rtti:'T1: Toepassen',
+    title:'Opdracht 1: De diepzeetrog',
+    task:'Zoek de diepe kloof in de zeebodem precies waar de oceanische plaat naar beneden duikt.',
+    cam:[-1.6,-0.9,0],
+    q:'Waarom ligt een diepzeetrog altijd aan de rand van het continent en niet midden op de oceaan?',
+    opts:[
+      ['Omdat de zware oceanische plaat hier onder het lichte continent buigt en de zeebodem mee de diepte in trekt',1,'Klopt! Precies op de kniklijn waar de plaat subduceert ontstaat een kloof van meer dan 10 km diepte.'],
+      ['Omdat rivieren vanaf het continent hier een diepe vallei in de zeebodem hebben uitgesleten',0,'Nee. Een trog ontstaat door platentektoniek (subductie), niet door riviererosie.'],
+      ['Omdat het oceaanwater hier veel kouder en zwaarder is',0,'Nee. De hydrostatische waterdruk is groot, maar de bodem buigt door de duikende tektonische plaat.']
+    ]
+  },
+  {
+    target:'wedge',
+    cand:['wedge','trench','subd','cc'],
+    rtti:'R: Reproductie (Weten)',
+    title:'Opdracht 2: Accretiewig (Aangroeiprisma)',
+    task:'Zoek de sedimentprop vlak voor de kust waar zeebodemsedimenten tegen het continent worden afgeschraapt.',
+    cam:[-0.5,-0.5,0],
+    q:'Geef aan wat er gebeurt met het zachte zeebodemsediment als de basaltplaat onder het continent duikt.',
+    opts:[
+      ['Het sediment wordt afgeschraapt tegen de continentrand en hoopt zich op tot een wig (aangroeiprisma)',1,'Precies goed! Net als sneeuw voor een sneeuwschep wordt het lichte sediment afgeschraapt en vormt het heuvelruggen voor de kust.'],
+      ['Het sediment lost onmiddellijk op in het oceaanwater',0,'Nee, het zand en slib lossen niet op maar vormen vast sedimentgesteente (schalie en zandsteen).'],
+      ['Het sediment verandert direct in gloeiende lava op de zeebodem',0,'Nee, lava ontstaat pas veel dieper in de aarde door het smelten van mantelgesteente.']
+    ]
+  },
+  {
+    target:'chamber',
+    cand:['chamber','melting','mantle','subd'],
+    rtti:'I: Inzicht',
+    title:'Opdracht 3: Magmakamer & Smeltzone',
+    task:'Zoek de peervormige magmakamer (diapier) die gevoed wordt vanuit de diepe smeltzone.',
+    cam:[7.0,-1.8,0],
+    q:'Waarom stijgt het magma vanuit de smeltzone als een traanvormige druppel (diapier) omhoog door de continentale korst?',
+    opts:[
+      ['Omdat heet gesmolten gesteente uitzet, een lagere dichtheid heeft dan het omringende vaste gesteente en daardoor opdrijft',1,'Uitstekend! Net als een warme luchtbel of een oliedruppel in water drijft het hete, lichtere magma omhoog door de zwaardere continentale korst.'],
+      ['Omdat de zwaartekracht onder de grond omgekeerd werkt',0,'Nee, de zwaartekracht trekt alles omlaag; het lichtere magma drijft juist op door dichtheidsverschil (isostasie/drijfvermogen).'],
+      ['Omdat het magma wordt opgezogen door de wind boven de vulkaan',0,'Nee, de opstijgende beweging wordt puur aangedreven door dichtheidsverschillen diep in de aardkorst.']
+    ]
+  },
+  {
+    target:'volc',
+    cand:['volc','mount','conduit','chamber'],
+    rtti:'T2: Toepassen',
+    title:'Opdracht 4: De gelaagde stratovulkaan',
+    task:'Zoek de stratovulkaan die opgebouwd is uit afwisselende lagen as en taaie lava.',
+    cam:[7.2,1.9,0],
+    q:'Leg uit hoe de afwisselende lagen as en lava in de doorsnede van de vulkaan zijn ontstaan.',
+    opts:[
+      ['Door opeenvolgende erupties: explosieve asregens wisselen af met uitvloeiende lavastromen die laag voor laag stollen',1,'Helemaal juist! Daarom heet het een stratovulkaan (stratum = laag): afwisselende lagen van vulkanische as, puin en gestolde lava bouwen samen de steile kegel op.'],
+      ['Doordat wind en regen zand en water op de vulkaan hebben geblazen',0,'Nee, de lagen bestaan uit puur vulkanisch materiaal dat door opeenvolgende uitbarstingen is afgezet.'],
+      ['Doordat de vulkaan tijdens een aardbeving in tweeën is gebroken',0,'Nee, de gelaagdheid ontstaat tijdens de opbouw van de vulkaan door talloze erupties over tienduizenden jaren.']
+    ]
+  }
+];
+
+const FINAL_SYNTHESIS={
+  q:'Leg in je eigen woorden uit hoe de botsing tussen twee tektonische platen leidt tot zowel een diepzeetrog, accretiewig, zware aardbevingen als explosieve stratovulkanen.',
+  model:'De zware oceanische basaltplaat duikt onder de lichte continentale plaat (subductie), waardoor bij de botslijn een diepe diepzeetrog ontstaat. Het zachte zeebodemsediment wordt afgeschraapt en hoopt zich op als een accretiewig. Tijdens het duiken klemmen de platen vast; als het breukvlak losschiet ontstaat een zware aardbeving. Dieper in de aarde (op 100-150 km diepte) zorgt meegesleurd water voor flux melting in de smeltzone. Het hete, lichte magma stijgt als een traanvormige diapier op naar de magmakamer en breekt via de kraterpijp door in een explosieve stratovulkaan met afwisselende lagen as en lava.'
+};
+
+let quest=null;
+
+function startQuest(){
+  if(S.right === 'col' || S.right === 'div' || S.right === 'trans'){
+    const btnCont = document.querySelector('[data-scn="cont"]');
+    if(btnCont) btnCont.click();
+  }
+  quest={i:0,phase:'find',score:0,firstTry:true};
+  $('bQuest').setAttribute('aria-pressed','true');
+  $('app').classList.add('quest-find');
+  infoEl.classList.remove('min');
+  infoEl.hidden=false;
+  LABS.forEach(L=>L.el.classList.remove('on','miss','right'));
+  flyToHS([0,-1.5,0],21,0.45,0.36);
+  beginQuestStep();
+}
+
+function endQuest(){
+  quest=null;
+  $('bQuest').setAttribute('aria-pressed','false');
+  $('app').classList.remove('quest-find');
+  LABS.forEach(L=>L.el.classList.remove('on','miss','right'));
+  infoEl.hidden=true;
+}
+
+function beginQuestStep(){
+  const st=QUESTS[quest.i];
+  quest.firstTry=true;
+  quest.phase='find';
+  $('app').classList.add('quest-find');
+  LABS.forEach(L=>L.el.classList.remove('on','miss','right'));
+
+  // Didactische tijdsynchronisatie: zorg dat de vulkaan/trog al gevormd is
+  if(st.target==='volc'){
+    if(S.p<0.72)seek(0.80*DUR);
+  }else if(st.target==='conduit'){
+    if(S.p<0.60)seek(0.68*DUR);
+  }else if(st.target==='chamber'){
+    if(S.p<0.48)seek(0.56*DUR);
+  }else if(st.target==='melting'){
+    if(S.p<0.36)seek(0.42*DUR);
+  }else if(st.target==='trench'){
+    if(S.p<0.25)seek(0.35*DUR);
+  }
+  renderQuest();
+}
+
+function renderQuest(){
+  if(!quest)return;
+  const n=QUESTS.length;
+  let progressBars='';
+  for(let k=0;k<n;k++){
+    progressBars+=`<i class="${k<quest.i?'done':(k===quest.i?'cur':'')}"></i>`;
+  }
+
+  $('infoTag').textContent=quest.phase==='done'?'Speurtocht · Afronding':`Speurtocht · Opdracht ${quest.i+1} van ${n}`;
+
+  if(quest.phase==='done'){
+    $('infoTitle').textContent='Goed gedaan!';
+    infoBody.innerHTML=`
+      <div class="q-progress">${progressBars}</div>
+      <div class="score-box">${quest.score} / ${n}</div>
+      <p style="margin:0 0 10px;font-weight:700">vragen in één keer juist beantwoord!</p>
+      
+      <div class="q-box" style="margin:10px 0">
+        <b>Eindvraag · Inzicht &amp; Synthese (I)</b>
+        <p>${FINAL_SYNTHESIS.q}</p>
+      </div>
+
+      <label class="q-hintline" for="q-reflect">Jouw verklaring (oefening):</label>
+      <textarea id="q-reflect" class="q-textarea" placeholder="Typ hier in je eigen woorden hoe de platen botsen en wat er gebeurt..."></textarea>
+      
+      <div class="q-row">
+        <button type="button" class="q-btn ghost" id="q-model-btn">Bekijk modelantwoord</button>
+      </div>
+      <div class="q-feedback good" id="q-model-box" style="display:none">
+        <b style="color:#16a34a;display:block;margin-bottom:4px">Modelantwoord (De Geo):</b>
+        <p style="margin:0">${FINAL_SYNTHESIS.model}</p>
+      </div>
+
+      <div class="q-row" style="margin-top:14px">
+        <button type="button" class="q-btn" id="q-restart">Opnieuw proberen</button>
+        <button type="button" class="q-link" id="q-quit">Terug naar verkennen</button>
+      </div>
+    `;
+
+    $('q-model-btn').onclick=()=>{
+      $('q-model-box').style.display='block';
+    };
+    $('q-restart').onclick=startQuest;
+    $('q-quit').onclick=endQuest;
+    return;
+  }
+
+  const st=QUESTS[quest.i];
+  $('infoTitle').textContent=st.title;
+
+  if(quest.phase==='find'){
+    infoBody.innerHTML=`
+      <div class="q-progress">${progressBars}</div>
+      <span class="rtti-badge">Zoekopdracht · ${st.rtti}</span>
+      <p class="q-task">${st.task}</p>
+      <p class="q-hintline">💡 Klik in het 3D-model op de juiste letter: <b>A, B, C of D</b>. De namen zijn nu even verborgen!</p>
+      <div class="q-row" style="margin-top:14px">
+        <button type="button" class="q-link" id="q-abort">Stoppen met de speurtocht</button>
+      </div>
+    `;
+    $('q-abort').onclick=endQuest;
+  }else if(quest.phase==='question'){
+    infoBody.innerHTML=`
+      <div class="q-progress">${progressBars}</div>
+      <span class="rtti-badge">Vraag · ${st.rtti}</span>
+      <p class="q-task">${st.q}</p>
+      <div class="q-options">
+        ${st.opts.map((opt,idx)=>`
+          <button type="button" class="q-opt" data-opt="${idx}">${opt[0]}</button>
+        `).join('')}
+      </div>
+      <div id="qFeedback"></div>
+      <div class="q-row" style="margin-top:12px">
+        <button type="button" class="q-link" id="q-abort">Stoppen met de speurtocht</button>
+      </div>
+    `;
+
+    $('q-abort').onclick=endQuest;
+    infoBody.querySelectorAll('.q-opt').forEach(btn=>{
+      btn.onclick=()=>answerQuestOption(+btn.dataset.opt,btn);
+    });
+  }
+}
+
+function answerQuestOption(optIdx,btnEl){
+  const st=QUESTS[quest.i];
+  const opt=st.opts[optIdx];
+  const fbContainer=$('qFeedback');
+
+  if(opt[1]===1){
+    if(quest.firstTry)quest.score++;
+    btnEl.classList.add('right');
+    infoBody.querySelectorAll('.q-opt').forEach(b=>b.disabled=true);
+
+    const isLast=quest.i===QUESTS.length-1;
+    fbContainer.innerHTML=`
+      <div class="q-feedback good">${opt[2]}</div>
+      <div class="q-row">
+        <button type="button" class="q-btn" id="qNext">${isLast?'Bekijk eindscore &amp; reflectie':'Volgende opdracht'} →</button>
+      </div>
+    `;
+    $('qNext').onclick=()=>{
+      if(isLast){
+        quest.phase='done';
+        $('app').classList.remove('quest-find');
+        renderQuest();
+      }else{
+        quest.i++;
+        beginQuestStep();
+      }
+    };
+    $('qNext').focus();
+  }else{
+    quest.firstTry=false;
+    btnEl.classList.add('wrong');
+    btnEl.disabled=true;
+    fbContainer.innerHTML=`
+      <div class="q-feedback bad">${opt[2]} Probeer een andere optie!</div>
+    `;
+  }
+}
+
+function onPinClick(L){
+  if(quest&&quest.phase==='find'){
+    const st=QUESTS[quest.i];
+    if(L.k===st.target){
+      L.el.classList.add('right');
+      toast('Heel goed gevonden!');
+      quest.phase='question';
+      $('app').classList.remove('quest-find');
+
+      flyToHS(st.cam||L.pos(),11,0.35,0.22);
+
+      setTimeout(()=>{
+        L.el.classList.remove('right');
+        L.el.classList.add('on');
+        renderQuest();
+      },650);
+    }else{
+      L.el.classList.add('miss');
+      setTimeout(()=>L.el.classList.remove('miss'),1000);
+      const letterIdx=st.cand.indexOf(L.k);
+      const letter=letterIdx>=0?'ABCD'[letterIdx]:'?';
+      const labelName=L.t?L.t():'Onderdeel';
+      toast(`Letter ${letter} is: ${labelName}. Probeer een andere letter!`);
+    }
+    return;
+  }
+
+  showInfo(L.k,0,true);
+}
+
+$('bQuest').addEventListener('click',()=>{
+  if(quest){
+    endQuest();
+  }else{
+    startQuest();
+  }
+});
+
+/* ---------- infokaart met 3 didactische tabbladen ---------- */
+const infoEl=$('info');
+const infoBody=$('infoBody');
+let currentKey='';
+let currentTab=0;
+
+function showInfo(k,tabIdx=0,fly=true){
+  if(quest&&quest.phase!=='done'){
+    toast('Maak eerst de speurtocht-opdracht af!');
+    return;
+  }
+  const key=(k==='volc'&&S.right!=='cont')?'volcO':(k==='oc'&&S.right==='col')?'ocCol':k;
+  if(!INFO[key])return;
+  currentKey=key;
+  currentTab=tabIdx;
+  const d=INFO[key];
+
+  $('infoTag').textContent=d[0];
+  $('infoTitle').textContent=d[1];
+  infoEl.classList.remove('min');
+  infoEl.hidden=false;
+
+  renderInfoCard();
+
+  LABS.forEach(L=>L.el.classList.toggle('on',L.k===k));
+
+  if(fly){
+    const targetLab=LABS.find(L=>L.k===k);
+    if(targetLab){
+      flyToHS(targetLab.pos(),13,0.45,0.28);
+    }
+  }
+}
+
+function renderInfoCard(){
+  const d=INFO[currentKey];
+  if(!d)return;
+
+  const list=getActiveLabsList();
+  const currentIdx=list.findIndex(L=>L.k===currentKey);
+
+  infoBody.innerHTML=`
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab-btn" data-tab="0" aria-selected="${currentTab===0}">Wat zie je?</button>
+      <button type="button" class="tab-btn" data-tab="1" aria-selected="${currentTab===1}">Wist je dat?</button>
+      <button type="button" class="tab-btn" data-tab="2" aria-selected="${currentTab===2}">Denkvraag</button>
+    </div>
+    <div class="tab-content">
+      ${currentTab===0?`<p>${d[2]}</p>`:''}
+      ${currentTab===1?`<div class="fact-box"><b>Wist je dat? (De Geo)</b><p style="margin:0">${d[3]}</p></div>`:''}
+      ${currentTab===2?`<div class="q-box"><b>Denkvraag voor de klas:</b><p style="margin:0">${d[4]}</p></div>`:''}
+    </div>
+    <div class="info-nav">
+      <button type="button" class="nav-btn" id="infoPrev">← Vorige</button>
+      <span class="nav-counter">${currentIdx>=0?currentIdx+1:1} / ${Math.max(1,list.length)}</span>
+      <button type="button" class="nav-btn" id="infoNext">Volgende →</button>
+    </div>
+  `;
+
+  infoBody.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      currentTab=+btn.dataset.tab;
+      renderInfoCard();
+    });
+  });
+
+  const prevBtn=$('infoPrev');
+  const nextBtn=$('infoNext');
+  if(prevBtn)prevBtn.addEventListener('click',()=>stepInfo(-1));
+  if(nextBtn)nextBtn.addEventListener('click',()=>stepInfo(1));
+}
+
+function getActiveLabsList(){
+  return LABS.filter(L=>S.lvl>=L.l&&S.lvl>0&&(!L.vis||L.vis()));
+}
+
+function stepInfo(dir){
+  const list=getActiveLabsList();
+  if(!list.length)return;
+  let idx=list.findIndex(L=>L.k===currentKey);
+  idx=(idx+dir+list.length)%list.length;
+  showInfo(list[idx].k,currentTab,true);
+}
+
+$('infoClose').addEventListener('click',()=>{
+  if(quest)endQuest();
+  infoEl.hidden=true;
+  LABS.forEach(L=>L.el.classList.remove('on'));
+});
+
+$('infoMin').addEventListener('click',()=>{
+  const isMin=infoEl.classList.toggle('min');
+  $('infoMin').textContent=isMin?'+':'–';
+  $('infoMin').setAttribute('aria-label',isMin?'Uitklappen':'Inklappen');
+});
+
+const ray=new T.Raycaster(),ndc=new T.Vector2();
+function pickList(){
+  const l=[ocCrust.mesh,ocLith.mesh,cCrust.mesh,cLith.mesh,ocTop.mesh,cTop.mesh,mFront,mBox,waterObj.mesh,...arrL.children,...arrR.children];
+  if(chamber.visible)l.push(chamber);
+  if(conduitMesh.visible)l.push(conduitMesh);
+  if(meltMesh.visible)l.push(meltMesh);
+  return l.filter(o=>o.visible!==false);
+}
+function classify(h){
+  const part=h.object.userData.part,p=h.point;
+  if(part==='conduit')return'conduit';
+  if(part==='chamber')return'chamber';
+  if(part==='melting')return'melting';
+  if(part==='water')return (S.right === 'col' ? 'oceanCol' : 'sea');
+  if(S.right === 'trans'){
+    if(part === 'house') return 'houses';
+    if(Math.abs(p.x) < 0.8) return 'fault';
+    if(Math.abs(p.z - (-3.5)) < 0.6) return 'road';
+    return 'fault';
+  }
+  if(S.right === 'div'){
+    const coastX = getDivCoast(S.p);
+    if(p.x < -coastX) return 'contL';
+    if(p.x > coastX) return 'contR';
+    if(part === 'water') return 'sea';
+    if(Math.abs(p.x) < 2.0 && p.y > -1.1) return 'mor';
+    if(Math.abs(p.x) < 1.0 && p.y < -1.5) return 'upwell';
+    return 'newCrust';
+  }
+  if(S.right === 'col'){
+    if(part==='oc'||part==='cc'){
+      if(p.y > 1.05 && S.p >= 0.35) return 'fossils';
+      if(p.y < 0.0) return 'oceanCol';
+      if(Math.abs(p.x) < 3.2 && p.y > 0.25) return 'mountCol';
+      if(p.x < 0) return 'oc';
+      return 'cc';
+    }
+    if(part==='ol'||part==='cl'){
+      if(Math.abs(p.x) < 2.5 && p.y < -1.5) return 'rootCol';
+      return 'mantle';
+    }
+    if(part==='mantle') return 'mantle';
+  }
+  if(part==='oc'||part==='ol'){
+    if(p.x>0.5)return'subd';
+    if(p.x>-2.3&&p.x<-1.3)return'trench';
+    return part;
+  }
+  if(part==='cc'||part==='cl'){
+    if(p.x>=CONT_TIP&&p.x<=1.5&&p.y<0.3)return'wedge';
+    if(S.p>0.4&&Math.hypot(p.x-XV,p.z*0.9)<1.6&&p.y>(S.right==='cont'?0.2:-0.8))return S.right==='cont'?'volc':'volcO';
+    if(S.right==='cont'&&S.p>0.2&&p.x>3.8&&p.x<6.4&&p.y>0.3)return'mount';
+    return'cc';
+  }
+  return part;
+}
+function pick(e){
+  const r=canvas.getBoundingClientRect();ndc.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
+  ray.setFromCamera(ndc,camera);const hits=ray.intersectObjects(pickList(),false);
+  if(hits.length)showInfo(classify(hits[0]));
+}
+
+/* ---------- begrippen als genummerde stippen ---------- */
+let labelStyle='stip'; // 'stip' (standaard rustig), 'naam', 'uit'
+function setLabelStyle(style){
+  labelStyle=style;
+  $('app').classList.toggle('lab-stip',style==='stip');
+  labEl.style.display=style==='uit'?'none':'';
+}
+
+const labEl=$('labels'),v3=new T.Vector3();
+const LABS = [
+  // Algemene plaatdelen voor subductie & botsing:
+  { k: 'oc', t: () => S.right === 'col' ? 'Continentale plaat (Botsend continent)' : 'Oceanische korst (Basalt ~7 km)', l: 1, vis: () => S.right !== 'div' && S.right !== 'trans', pos: () => S.right === 'col' ? [-6.5, surfY(-6.5, S.zf) + 0.25, S.zf] : [-5.8, -1.05, S.zf] },
+  { k: 'cc', t: () => S.right === 'col' ? 'Continentale plaat (Eurazië-type)' : (S.right === 'cont' ? 'Continentale korst (Graniet ~35 km)' : 'Oceanische plaat'), l: 1, vis: () => S.right !== 'div' && S.right !== 'trans', pos: () => [8.8, surfY(8.8, S.zf) + 0.25, S.zf] },
+  { k: 'mantle', t: () => 'Asthenosfeer (Plastische mantel ~1300 °C)', l: 1, pos: () => [-4.5, -4.2, S.zf] },
+  { k: 'subd', t: () => 'Subductiezone (Plaatgrens)', l: 1, vis: () => (S.right === 'cont' || S.right === 'ocean'), pos: () => [Math.min(1.5, Math.max(0.1, xTip() - 0.4)), slabTop(Math.min(1.5, Math.max(0.1, xTip() - 0.4))) + 0.12, S.zf] },
+  { k: 'wedge', t: () => 'Accretiewig (Aangroeiprisma)', l: 2, vis: () => (S.right === 'cont' || S.right === 'ocean'), pos: () => [-0.5, rightTop(-0.5, S.zf) + 0.15, S.zf] },
+  { k: 'trench', t: () => S.p >= 0.25 ? 'Diepzeetrog (>10 km diepte)' : 'Diepzeetrog (Trogvorming)', l: 1, vis: () => (S.right === 'cont' || S.right === 'ocean'), pos: () => [CONT_TIP - 0.2, slabTop(CONT_TIP - 0.2) + 0.35, S.zf] },
+  { k: 'volc', t: () => S.right === 'cont' ? 'Stratovulkaan (Vulkanische boog)' : 'Vulkanisch eiland', l: 1, vis: () => (S.right === 'cont' || S.right === 'ocean') && S.p >= 0.75, pos: () => [7.2, rightTop(7.2, 0) + 0.35, 0] },
+  { k: 'conduit', t: () => 'Kraterpijp & Vertakkingen (Dykes/Sills)', l: 2, vis: () => (S.right === 'cont' || S.right === 'ocean') && S.p >= 0.70 && S.magma && Math.abs(S.zf) < 1.6, pos: () => [7.1, ( -1.8 + rightTop(7.2, S.zf) ) / 2, S.zf] },
+  { k: 'chamber', t: () => 'Magmakamer (Diapier/Pluton)', l: 2, vis: () => (S.right === 'cont' || S.right === 'ocean') && S.p >= 0.55 && S.magma && Math.abs(S.zf) < 2, pos: () => [7.0, -1.8, S.zf] },
+  { k: 'melting', t: () => 'Smeltzone (100–150 km diepte)', l: 2, vis: () => (S.right === 'cont' || S.right === 'ocean') && S.p >= 0.52 && xTip() >= 6.0, pos: () => [Math.min(6.6, xTip() - 0.25), slabTop(Math.min(6.6, xTip() - 0.25)) + 0.08, S.zf] },
+  { k: 'mount', t: () => 'Plooiingsgebergte (Andes-type)', l: 2, vis: () => S.right === 'cont' && S.p > 0.25, pos: () => [4.8, rightTop(4.8, S.zf) + 0.15, S.zf] },
+  { k: 'mountCol', t: () => 'Plooiingsgebergte (Himalaya)', l: 1, vis: () => S.right === 'col' && S.p > 0.15, pos: () => [1.4, rightTop(1.4, S.zf) + 0.35, S.zf] },
+  { k: 'fossils', t: () => 'Vis- & zeefossielen (Mariene kalksteen)', l: 1, vis: () => S.right === 'col' && S.p >= 0.35, pos: () => [-1.0, rightTop(-1.0, S.zf) + 0.35, S.zf] },
+  { k: 'oceanCol', t: () => 'Oeroceaan (Tethyszee & zeefauna)', l: 1, vis: () => S.right === 'col' && S.p < 0.35, pos: () => [0.0, -0.20, S.zf] },
+  { k: 'rootCol', t: () => 'Korst- & Lithosfeerwortel (~70–200 km)', l: 2, vis: () => S.right === 'col' && S.p > 0.25, pos: () => [0.0, (colMoho(0.0, S.zf, 0) + colBase(0.0)) / 2, S.zf] },
+  { k: 'quake', t: () => 'Hypocentrum (Aardbevingshaard)', l: 2, vis: () => S.quake && !!lastQuake && S.right !== 'div', pos: () => [lastQuake.x, lastQuake.y, S.zf] },
+  { k: 'sea', t: () => 'Oceaanwater (Zeeniveau)', l: 2, vis: () => (S.right !== 'col' && S.right !== 'trans') && S.water, pos: () => [-7.2, 0.25, S.zf] },
+
+  // Specifieke labels voor DIVERGENT (Expanderende oceaan met continenten links en rechts):
+  { k: 'contL', t: () => 'Westelijk continent (Drijft westwaarts)', l: 1, vis: () => S.right === 'div', pos: () => [-Math.min(10.2, getDivCoast(S.p) + 1.2), divTop(-Math.min(10.2, getDivCoast(S.p) + 1.2), S.zf) + 0.30, S.zf] },
+  { k: 'contR', t: () => 'Oostelijk continent (Drijft oostwaarts)', l: 1, vis: () => S.right === 'div', pos: () => [Math.min(10.2, getDivCoast(S.p) + 1.2), divTop(Math.min(10.2, getDivCoast(S.p) + 1.2), S.zf) + 0.30, S.zf] },
+  { k: 'mor', t: () => 'Mid-oceanische rug (MOR)', l: 1, vis: () => S.right === 'div', pos: () => [1.2, divTop(1.2, S.zf) + 0.25, S.zf] },
+  { k: 'pillow', t: () => 'Kussenlava (Pillow basalts)', l: 2, vis: () => S.right === 'div' && S.p >= 0.25, pos: () => [0.35, divTop(0.35, S.zf) + 0.18, S.zf] },
+  { k: 'upwell', t: () => 'Opstijgend magma & decompressie (Vult holte)', l: 1, vis: () => S.right === 'div' && S.magma, pos: () => [0.0, -1.8, S.zf] },
+  { k: 'newCrust', t: () => 'Nieuwe oceanische korst (zeebodem)', l: 1, vis: () => S.right === 'div', pos: () => [Math.min(getDivCoast(S.p) - 0.5, 3.2), divTop(Math.min(getDivCoast(S.p) - 0.5, 3.2), S.zf) + 0.22, S.zf] },
+  { k: 'smoker', t: () => 'Black smoker (Hydrothermale bron)', l: 2, vis: () => S.right === 'div' && S.p >= 0.45, pos: () => [-0.4, divTop(-0.4, S.zf) + 0.35, S.zf] },
+
+  // Specifieke labels voor TRANSFORM (San Andreas-type):
+  { k: 'fault', t: () => 'Transformbreuk (Breuklijn)', l: 1, vis: () => S.right === 'trans', pos: () => [0.0, transTop(0.0, S.zf) + 0.28, S.zf] },
+  { k: 'houses', t: () => 'Bebouwing & Dorpen (Verschuiving)', l: 1, vis: () => S.right === 'trans', pos: () => [-1.2, transTop(-1.2, -3.05 + 0.15 + 1.25 * S.p) + 0.45, -3.05 + 0.15 + 1.25 * S.p] },
+  { k: 'road', t: () => 'Verbroken & Versprongen weg', l: 1, vis: () => S.right === 'trans', pos: () => [0.0, transTop(0.0, -3.5) + 0.22, -3.5] },
+  { k: 'stress', t: () => 'Schuifspanning & Stick-Slip breukvlak', l: 2, vis: () => S.right === 'trans', pos: () => [0.0, -1.2, S.zf] }
+];
+
+LABS.forEach(L=>{
+  const b=document.createElement('button');
+  b.type='button';
+  b.className='pin'+(L.l>1?' l2':'');
+  b.innerHTML='<span class="dot"></span><span class="lbl"></span>';
+  b.addEventListener('click',()=>onPinClick(L));
+  labEl.appendChild(b);
+  L.el=b;
+  L.dotEl=b.querySelector('.dot');
+  L.lblEl=b.querySelector('.lbl');
+  L.txt='';
+});
+
+function updLabels(){
+  const w=canvas.clientWidth,h=canvas.clientHeight;
+  const inQuest=quest&&quest.phase!=='done';
+  const qCand=inQuest&&quest.phase==='find'?QUESTS[quest.i].cand:null;
+
+  let visibleCount=0;
+  for(let i=0;i<LABS.length;i++){
+    const L=LABS[i];
+    const isLevelActive=S.lvl>=L.l&&S.lvl>0&&(!L.vis||L.vis());
+
+    if(qCand){
+      if(!qCand.includes(L.k)){
+        L.el.style.display='none';
+        continue;
+      }
+    }else if(inQuest){
+      if(L.k!==QUESTS[quest.i].target){
+        L.el.style.display='none';
+        continue;
+      }
+    }else{
+      if(!isLevelActive||labelStyle==='uit'){
+        L.el.style.display='none';
+        continue;
+      }
+    }
+
+    const t=L.t();
+    if(t!==L.txt){
+      L.lblEl.textContent=t;
+      L.txt=t;
+    }
+
+    if(qCand){
+      const letterIdx=qCand.indexOf(L.k);
+      L.dotEl.textContent='ABCD'[letterIdx]||'';
+    }else{
+      visibleCount++;
+      L.dotEl.textContent=visibleCount;
+    }
+
+    const p=L.pos();
+    v3.set(p[0],p[1],p[2]).project(camera);
+    if(v3.z>1||Math.abs(v3.x)>1.1||Math.abs(v3.y)>1.1){
+      L.el.style.display='none';
+      continue;
+    }
+    L.el.style.display='';
+    L.el.style.transform='translate('+((v3.x*0.5+0.5)*w).toFixed(1)+'px,'+((-v3.y*0.5+0.5)*h).toFixed(1)+'px) translate(-50%,-100%)';
+  }
+}
+
+/* ---------- bediening & didactische lesfasen ---------- */
+const PLAY='M8 5v14l11-7z',PAUSE='M6 5h4v14H6zM14 5h4v14h-4z';
+function setPlaying(v){S.playing=v;$('playIcon').firstElementChild.setAttribute('d',v?PAUSE:PLAY);$('bPlay').setAttribute('aria-label',v?'Pauzeren':'Afspelen')}
+function seek(tt){
+  if(Math.abs(tt - S.tt) > 2 || tt === 0) clearQuakes();
+  S.tt=clamp(tt,0,DUR*1.3);
+  S.p=clamp(S.tt/DUR,0,1);
+  S.dirty=true;
+}
+$('bPlay').addEventListener('click',()=>{if(!S.playing&&S.tt>=DUR*1.3)seek(0);setPlaying(!S.playing)});
+$('bBack').addEventListener('click',()=>{setPlaying(false);seek(S.tt-3)});
+$('bFwd').addEventListener('click',()=>{setPlaying(false);seek(S.tt+3)});
+$('bReset').addEventListener('click',()=>{
+  setPlaying(false);
+  clearQuakes();
+  seek(0);
+  S.stress=0;
+  scars.length=0;
+  lastQuake=null;
+  $('quakeTxt').textContent='Nog geen beving';
+});
+
+let dragTl=false;const tl=$('tl');
+tl.addEventListener('input',()=>{dragTl=true;seek(tl.value/1000*DUR)});
+tl.addEventListener('change',()=>{dragTl=false});
+const spd=$('spd');
+function setSpeed(){S.speed=0.25*Math.pow(16,spd.value/100);$('spdOut').textContent=String(Math.round(S.speed*100)/100).replace('.',',')+'×'}
+spd.addEventListener('input',setSpeed);setSpeed();
+
+function seg(id,attr,fn){const box=$(id);box.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;
+  box.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));fn(b.dataset[attr])})}
+seg('scn','scn',v=>{
+  S.right=v;
+  S.dirty=true;
+  if(v==='cont'){
+    $('ttl').textContent='Subductiezone';
+    $('sub').textContent='Een oceanische plaat duikt onder een continent';
+    waterObj.mesh.visible = S.water;
+  } else if(v==='ocean'){
+    $('ttl').textContent='Eilandenboog';
+    $('sub').textContent='Een oceanische plaat duikt onder een andere oceanische plaat';
+    waterObj.mesh.visible = S.water;
+  } else if(v==='col'){
+    $('ttl').textContent='Plooiingsgebergte';
+    $('sub').textContent='Twee lichte continentale platen botsen: gebergtevorming (Himalaya)';
+    waterObj.mesh.visible = false;
+  } else if(v==='div'){
+    $('ttl').textContent='Mid-oceanische rug (Divergent)';
+    $('sub').textContent='Platen bewegen uit elkaar: oprijzend magma vormt nieuwe oceanische korst';
+    waterObj.mesh.visible = S.water;
+  } else if(v==='trans'){
+    $('ttl').textContent='Transforme plaatgrens';
+    $('sub').textContent='Platen schuiven horizontaal langs elkaar: zware aardbevingen langs de breuklijn';
+    waterObj.mesh.visible = false;
+  }
+  if(quest) endQuest();
+  tsunamis.length=0;
+  clearQuakes();
+  scars.length=0;
+  lastQuake=null;
+  S.stress=0;
+  $('meter').style.width='0%';
+  $('quakeTxt').textContent = (v === 'div') ? 'Rustige plaatgrens (geen bevingen)' : 'Nog geen beving';
+  updLabels();
+});
+seg('views','view',v=>{Object.assign(tgt,VIEWS[v])});
+seg('labStyle','style',v=>{setLabelStyle(v)});
+seg('lvl','lvl',v=>{S.lvl=+v});
+$('cut').addEventListener('input',e=>{S.cutV=+e.target.value;S.dirty=true});
+[['t-water','water'],['t-quake','quake'],['t-magma','magma'],['t-arrows','arrows']].forEach(([id,k])=>$(id).addEventListener('change',e=>{
+  S[k]=e.target.checked;
+  if(k==='quake'&&!S.quake) clearQuakes();
+  S.dirty=true;
+}));
+$('optbtn').addEventListener('click',()=>{const o=$('panel').classList.toggle('open');$('optbtn').setAttribute('aria-expanded',o)});
+
+/* 4 DIDACTISCHE LESFASEN LOGICA */
+const PHASE_TARGETS=[
+  {p:0.08, idx:0}, // Fase 1: Nadering
+  {p:0.32, idx:1}, // Fase 2: Trogvorming
+  {p:0.62, idx:2}, // Fase 3: Smeltzone & Vulkanisme
+  {p:0.86, idx:3}  // Fase 4: Breuk & Aardbeving
+];
+
+const phaseBtns=document.querySelectorAll('.phase-btn');
+phaseBtns.forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const idx=+btn.dataset.phase;
+    const target=PHASE_TARGETS[idx];
+    seek(target.p * DUR);
+    updatePhaseButtons(target.p);
+  });
+});
+
+function updatePhaseButtons(p){
+  let activeIdx=0;
+  if(p<0.22) activeIdx=0;
+  else if(p<0.48) activeIdx=1;
+  else if(p<0.75) activeIdx=2;
+  else activeIdx=3;
+  phaseBtns.forEach((btn,i)=>{
+    btn.setAttribute('aria-pressed', i===activeIdx ? 'true' : 'false');
+  });
+}
+
+window.addEventListener('keydown',e=>{
+  keysDown.add(e.code);
+  keysDown.add(e.key.toLowerCase());
+  if(isPanKey()){
+    canvas.style.cursor='grab';
+  }
+  const tg=e.target.tagName;
+  if(tg==='INPUT'||tg==='TEXTAREA'){
+    if(e.code==='Space'&&tg==='INPUT'&&e.target.type==='range'){}
+    else return;
+  }
+  if(tg==='BUTTON'&&e.code==='Space')return;
+  
+  if(e.code==='Space'){e.preventDefault();$('bPlay').click()}
+  else if(e.code==='KeyQ'){$('bQuest').click()}
+  else if(e.code==='Escape'){if(quest)endQuest();else infoEl.hidden=true}
+  else if(e.code==='Home'){flyToHS([0,-1.5,0],21,0.45,0.36)}
+  else if(e.code==='ArrowRight'||e.code==='PageDown'){
+    if(!infoEl.hidden&&!quest){stepInfo(1)}
+    else $('bFwd').click();
+  }
+  else if(e.code==='ArrowLeft'||e.code==='PageUp'){
+    if(!infoEl.hidden&&!quest){stepInfo(-1)}
+    else $('bBack').click();
+  }
+});
+
+window.addEventListener('keyup',e=>{
+  keysDown.delete(e.code);
+  keysDown.delete(e.key.toLowerCase());
+  if(!isPanKey()){
+    canvas.style.cursor='';
+  }
+});
+
+window.addEventListener('blur',()=>{
+  keysDown.clear();
+  canvas.style.cursor='';
+});
+
+/* ---------- uitleg bij de tijdlijn ---------- */
+function captionFor(p){
+  if (S.right === 'div') {
+    if (p < 0.22) return 'De continenten bewegen uit elkaar. Tussen de twee landmassa\'s opent zich een nieuwe zee met opstijgend magma.';
+    if (p < 0.48) return 'Magma stijgt op: onder de mid-oceanische rug stijgt heet asthenosfeermagma omhoog. De ruimte tussen de scheurende platen vult zich met magma.';
+    if (p < 0.75) return 'De oceaan groeit: de continenten links en rechts drijven steeds verder uit elkaar. In het midden vormt de mid-oceanische rug nieuwe zeebodem.';
+    return 'Volgroeide oceaan (zoals de Atlantische Oceaan): links en rechts liggen de continenten ver uiteen. Continu ontstaat nieuwe oceanische korst doordat het magma stolt tot basalt.';
+  }
+  if (S.right === 'trans') {
+    if (p < 0.22) return 'Twee continentale platen schuiven horizontaal langs elkaar (San Andreasbreuk). De weg en dorpen staan in elkaars verlengde.';
+    if (p < 0.48) return 'Door enorme wrijving haken de ruwe breukwanden muurvast in elkaar (stick). De elastische schuifspanning loopt hoog op (zie spanningsmeter).';
+    if (p < 0.75) return 'Het land vervormt elastisch mee: de huizen aan weerszijden van de breuklijn schuiven zichtbaar in tegengestelde richting langs elkaar heen.';
+    return 'STICK-SLIP! De spanning overtreft de wrijving: de breuk schiet met een klap los! Dit veroorzaakt een zware ondiepe aardbeving en de weg verspringt abrupt.';
+  }
+  if (S.right === 'col') {
+    if (p < 0.22) return 'Tussen de naderende continenten ligt een oeroceaan (Tethyszee). Op de zeebodem leven vissen en hopen zich mariene sedimenten op.';
+    if (p < 0.48) return 'De oceaan sluit: zeebodemsedimenten worden samengeperst. Onder gigantische druk en hitte versteent het zachte sediment tot kalksteen.';
+    if (p < 0.75) return 'Intense plooiing: de voormalige zeebodem en continentranden worden kilometers hoog omhoog gestuwd. Een diepe korstwortel zakt in de mantel.';
+    return 'Plooiingsgebergte (Himalaya): De versteende zeebodem met visfossielen ligt nu op de allerhoogste toppen (zoals de top van Mount Everest op 8,8 km)!';
+  }
+  const c=S.right==='cont';
+  if(p<0.2)return'Twee platen bewegen naar elkaar toe. De zware basaltische oceanische plaat begint onder de continentale plaat te duiken.';
+  if(p<0.50)return'De oceanische plaat zakt diep de aarde in; een diepe, donkere trog ontstaat. Ook de overrijdende plaat buigt omlaag naar de trog toe.';
+  if(p<0.75)return'Op 100-150 km diepte bereikt de duikende plaat de hete asthenosfeer en smelt partieel. Heet magma stijgt op naar de magmakamer. Megathrust-aardbevingen schudden het contactvlak.';
+  return c?'Het magma breekt door in een explosieve stratovulkaan. De botsing plooit het land omhoog tot gebergten.':'Vulkanen groeien vanaf de zeebodem tot boven het wateroppervlak: er ontstaat een vulkanische eilandenboog.';
+}
+function phaseFor(p){
+  if (S.right === 'div') {
+    return p < 0.22 ? 'Platen wijken' : p < 0.48 ? 'Decompressiesmelting' : p < 0.75 ? 'Magma & kussenlava' : 'Nieuwe korst gevormd';
+  }
+  if (S.right === 'trans') {
+    return p < 0.22 ? 'Platen glijden' : p < 0.48 ? 'Spanningsopbouw' : p < 0.75 ? 'Elastische buiging' : 'Stick-slip beving';
+  }
+  if (S.right === 'col') {
+    return p < 0.22 ? 'Oeroceaan & sediment' : p < 0.48 ? 'Oceaan sluit & verstenen' : p < 0.75 ? 'Plooiing & wortel' : 'Visfossielen op bergtop';
+  }
+  return p<0.2?'Platen naderen':p<0.50?'Dieptrog & buiging':p<0.75?'Magma in mantel & bevingen':(S.right==='cont'?'Vulkaan en gebergte':'Eilandboog');
+}
+let lastCap='',lastPh='';
+
+/* ---------- hoofdlus ---------- */
+let last=performance.now();
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt=Math.min(0.05,(now-last)/1000);last=now;
+  if(S.playing)S.tt+=dt*S.speed;
+  const p=clamp(S.tt/DUR,0,1);if(p!==S.p){S.p=p;S.dirty=true}
+  S.zf=S.cutV/100*6.5;clip.constant=S.zf+0.02;
+  offO=S.tt*0.35;offC=-S.tt*0.08;
+  crustUniforms.u_p.value=p;
+  crustUniforms.u_isCol.value=(S.right==='col'?1.0:0.0);
+  crustUniforms.u_zf.value=S.zf;
+  if(S.playing||S.dirty||S.shake>0){
+    if(S.dirty)rebuildTops();
+    rebuildBodies();updMantle();updArrows();updVillage();S.dirty=false;
+  }
+  updWater(dt);
+  updMagma(dt);updQuakes(dt);updCam(dt);updLabels();
+  if(!dragTl)tl.value=Math.round(p*1000);
+  updatePhaseButtons(p);
+  const c=captionFor(p);if(c!==lastCap){$('cap').textContent=c;lastCap=c}
+  const ph=phaseFor(p);if(ph!==lastPh){$('phase').textContent=ph;lastPh=ph}
+  renderer.render(scene,camera);
+}
+resize();
+crustUniforms.u_p.value=S.p;
+crustUniforms.u_isCol.value=(S.right==='col'?1.0:0.0);
+crustUniforms.u_zf.value=S.zf;
+rebuildTops();rebuildBodies();updMantle();updWater(0.016);updArrows();updVillage();S.dirty=false;
+requestAnimationFrame(frame);
+setTimeout(resize,200);
+window.__subd={S,T,root,camera,renderer,scene,clip,rebuildBodies,rebuildTops,updWater,quake,updQuakes,clearQuakes,events,crustUniforms,seek,DUR,updMagma,xTip,slabTop,rightTop,meltMesh,chamber,conduitMesh,magmaPts};
+})();
+</script>
+</body>
+</html>
