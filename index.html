@@ -133,11 +133,14 @@
   .q-task{font-weight:700;margin-bottom:6px}
   .q-hintline{color:var(--muted);font-size:13.5px;margin:4px 0 10px}
   .q-options{display:flex;flex-direction:column;gap:8px;margin:12px 0}
-  .q-opt{text-align:left;background:var(--chip);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font:inherit;font-size:14px;line-height:1.35;cursor:pointer;transition:all .15s ease}
+  .q-opt{display:flex;align-items:flex-start;gap:10px;text-align:left;background:var(--chip);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font:inherit;font-size:14px;line-height:1.35;cursor:pointer;transition:all .15s ease}
   .q-opt:hover:not(:disabled){border-color:var(--accent);background:var(--panel)}
   .q-opt:disabled{cursor:default}
   .q-opt.wrong{border-color:#dc2626;background:rgba(220,38,38,0.08);opacity:.85}
   .q-opt.right{border-color:#16a34a;background:rgba(22,163,74,0.12);font-weight:700}
+  .q-opt-letter{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;border-radius:6px;background:var(--panel);border:1px solid var(--line);font-weight:800;font-size:12px;color:var(--accent);flex-shrink:0;margin-top:1px}
+  .q-opt.right .q-opt-letter{background:#16a34a;color:#fff;border-color:#16a34a}
+  .q-opt.wrong .q-opt-letter{background:#dc2626;color:#fff;border-color:#dc2626}
   .q-fb{padding:10px 12px;border-radius:8px;margin:8px 0 12px;font-size:13.5px;line-height:1.4}
   .q-fb.good{background:rgba(22,163,74,0.12);border-left:4px solid #16a34a;color:var(--fg)}
   .q-fb.bad{background:rgba(220,38,38,0.1);border-left:4px solid #dc2626;color:var(--fg)}
@@ -1916,10 +1919,10 @@ function updArrows(){
     const b=Math.sin(S.tt*3)*0.12*(S.playing?1:0);
     const yL = transTop(-3.8, z) + 0.75;
     const yR = transTop(3.8, z) + 0.75;
-    setArrow(arrL, 1.5, -3.8, yL, z - 0.7 + b, 1);
-    arrL.rotation.y = Math.PI / 2; // wijst naar voren (+Z)
-    setArrow(arrR, 1.5, 3.8, yR, z + 0.7 - b, 1);
-    arrR.rotation.y = -Math.PI / 2; // wijst naar achteren (-Z)
+    setArrow(arrL, 1.5, -3.8, yL, z + 0.7 + b, 1);
+    arrL.rotation.y = -Math.PI / 2; // wijst naar het zuiden (+Z / naar voren, richting van de linkerplaat)
+    setArrow(arrR, 1.5, 3.8, yR, z - 0.7 - b, 1);
+    arrR.rotation.y = Math.PI / 2;  // wijst naar het noorden (-Z / naar achteren, richting van de rechterplaat)
     return;
   }
   const b=Math.sin(S.tt*3)*0.12*(S.playing?1:0);
@@ -2599,9 +2602,9 @@ const INFO={
     'De plek diep in de aarde waar het klemzittende breukvlak losschiet en seismische schokgolven uitzendt. De haarden liggen trapsgewijs dieper naarmate de plaat verder wegzakt.',
     'Het punt loodrecht boven de haard aan het aardoppervlak noemen we het epicentrum. Hier is de schok meestal het hevigst.',
     'Beredeneer waarom aardbevingshaarden in Japan steeds dieper onder de grond liggen naarmate je verder landinwaarts kijkt.'],
-  chamber:['Vulkanisme','Magmakamer (Diapier/Pluton)',
-    'Een ondergronds reservoir vol gesmolten gesteente (magma). Het hete magma is lichter dan het omringende vaste gesteente en borrelt daarom omhoog als een peervormige diapier.',
-    'Water dat in de duikende zeebodem meereist verlaagt het smeltpunt van het mantelgesteente op 100-150 km diepte. Dit proces heet flux melting.',
+  chamber:['Vulkanisme','Magmakamer',
+    'Een ondergronds reservoir vol gesmolten gesteente (magma). Het hete magma is lichter dan het omringende vaste gesteente en stijgt daarom omhoog.',
+    'Water dat in de duikende zeebodem meereist verlaagt het smeltpunt van het mantelgesteente op 100-150 km diepte. Dit hete magma verzamelt zich in de magmakamer.',
     'Waarom smelt de duikende plaat pas op 100 tot 150 km diepte en niet al meteen bij de trog?'],
   conduit:['Vulkanisme','Kraterpijp & Vertakkingen (Dykes/Sills)',
     'Het centrale toevoerkanaal en de zijwaartse vertakkingen (horizontale sills en schuine dykes) waarlangs het magma vanuit de diepgelegen magmakamer met grote druk omhoog geperst wordt naar de krater.',
@@ -2656,13 +2659,13 @@ const INFO={
     'De Mid-Atlantische Rug is meer dan 15.000 km lang en vormt de langste aaneengesloten bergketen op aarde!',
     'Waarom is de oceaanbodem bij de mid-oceanische rug hoger dan de diepere zeebodem verderop?'],
   newCrust:['Plaatdeel','Nieuwe oceanische korst (Basalt)',
-    'Wanneer de platen uit elkaar bewegen, stolt het opstijgende magma op de zeebodem tot vers basalt. Zo ontstaat er continu nieuwe oceanische korst.',
-    'Omdat hier steeds nieuwe korst bijkomt, noemen we dit een constructieve plaatgrens.',
+    'Wanneer de platen uit elkaar bewegen, stolt het opstijgende magma op de zeebodem tot hard vulkanisch gesteente (basalt). Zo ontstaat er continu nieuwe oceanische korst.',
+    'Omdat hier steeds nieuwe aardkorst bijkomt (opgebouwd wordt), noemen we dit een opbouwende (constructieve) plaatgrens.',
     'Als er bij de mid-oceanische ruggen steeds nieuwe korst ontstaat, waarom wordt de aarde dan toch niet steeds groter?'],
-  upwell:['Binnen in de aarde','Opstijgend magma (Decompressie)',
-    'Heet vast mantelgesteente stijgt langzaam op onder de scheurzone. Doordat de druk van de platen wegvalt (decompressie), smelt het gesteente tot vloeibaar magma.',
-    'Het opstijgende magma heeft een temperatuur van ongeveer 1200 tot 1300 °C.',
-    'Leg uit waarom gesteente kan smelten door een afname in druk, zelfs als de temperatuur gelijk blijft.'],
+  upwell:['Binnen in de aarde','Opstijgend magma',
+    'Doordat de twee platen uit elkaar bewegen, ontstaat er een scheur in de aardkorst. Heet gesteente uit de aardmantel stijgt op naar deze opening en smelt tot vloeibaar magma.',
+    'Het opstijgende magma heeft een temperatuur van ruim 1200 °C en vult het gat tussen de platen continu op.',
+    'Wat gebeurt er met dit hete magma zodra het in contact komt met het ijskoude diepe oceaanwater?'],
   fault:['Plaatgrens','Transformbreuk (Zijschuiving)',
     'Een breuklijn waar twee tektonische platen horizontaal langs elkaar heen schuiven. Er wordt geen korst gemaakt en geen korst vernietigd (conservatieve plaatgrens).',
     'De San Andreasbreuk in Californië is meer dan 1200 km lang en veroorzaakt regelmatig zware aardbevingen.',
@@ -2681,79 +2684,277 @@ const INFO={
     'Wat drijft de tektonische platen aan om te bewegen?']
 };
 
-/* ---------- interactieve speurtocht (didactiek naar westfront) ---------- */
-const QUESTS=[
-  {
-    target:'trench',
-    cand:['trench','oc','subd','wedge'],
-    rtti:'T1: Toepassen',
-    title:'Opdracht 1: De diepzeetrog',
-    task:'Zoek de diepe kloof in de zeebodem precies waar de oceanische plaat naar beneden duikt.',
-    cam:[-1.6,-0.9,0],
-    q:'Waarom ligt een diepzeetrog altijd aan de rand van het continent en niet midden op de oceaan?',
-    opts:[
-      ['Omdat de zware oceanische plaat hier onder het lichte continent buigt en de zeebodem mee de diepte in trekt',1,'Klopt! Precies op de kniklijn waar de plaat subduceert ontstaat een kloof van meer dan 10 km diepte.'],
-      ['Omdat rivieren vanaf het continent hier een diepe vallei in de zeebodem hebben uitgesleten',0,'Nee. Een trog ontstaat door platentektoniek (subductie), niet door riviererosie.'],
-      ['Omdat het oceaanwater hier veel kouder en zwaarder is',0,'Nee. De hydrostatische waterdruk is groot, maar de bodem buigt door de duikende tektonische plaat.']
-    ]
-  },
-  {
-    target:'wedge',
-    cand:['wedge','trench','subd','cc'],
-    rtti:'R: Reproductie (Weten)',
-    title:'Opdracht 2: Accretiewig (Aangroeiprisma)',
-    task:'Zoek de sedimentprop vlak voor de kust waar zeebodemsedimenten tegen het continent worden afgeschraapt.',
-    cam:[-0.5,-0.5,0],
-    q:'Geef aan wat er gebeurt met het zachte zeebodemsediment als de basaltplaat onder het continent duikt.',
-    opts:[
-      ['Het sediment wordt afgeschraapt tegen de continentrand en hoopt zich op tot een wig (aangroeiprisma)',1,'Precies goed! Net als sneeuw voor een sneeuwschep wordt het lichte sediment afgeschraapt en vormt het heuvelruggen voor de kust.'],
-      ['Het sediment lost onmiddellijk op in het oceaanwater',0,'Nee, het zand en slib lossen niet op maar vormen vast sedimentgesteente (schalie en zandsteen).'],
-      ['Het sediment verandert direct in gloeiende lava op de zeebodem',0,'Nee, lava ontstaat pas veel dieper in de aarde door het smelten van mantelgesteente.']
-    ]
-  },
-  {
-    target:'chamber',
-    cand:['chamber','melting','mantle','subd'],
-    rtti:'I: Inzicht',
-    title:'Opdracht 3: Magmakamer & Smeltzone',
-    task:'Zoek de peervormige magmakamer (diapier) die gevoed wordt vanuit de diepe smeltzone.',
-    cam:[7.0,-1.8,0],
-    q:'Waarom stijgt het magma vanuit de smeltzone als een traanvormige druppel (diapier) omhoog door de continentale korst?',
-    opts:[
-      ['Omdat heet gesmolten gesteente uitzet, een lagere dichtheid heeft dan het omringende vaste gesteente en daardoor opdrijft',1,'Uitstekend! Net als een warme luchtbel of een oliedruppel in water drijft het hete, lichtere magma omhoog door de zwaardere continentale korst.'],
-      ['Omdat de zwaartekracht onder de grond omgekeerd werkt',0,'Nee, de zwaartekracht trekt alles omlaag; het lichtere magma drijft juist op door dichtheidsverschil (isostasie/drijfvermogen).'],
-      ['Omdat het magma wordt opgezogen door de wind boven de vulkaan',0,'Nee, de opstijgende beweging wordt puur aangedreven door dichtheidsverschillen diep in de aardkorst.']
-    ]
-  },
-  {
-    target:'volc',
-    cand:['volc','mount','conduit','chamber'],
-    rtti:'T2: Toepassen',
-    title:'Opdracht 4: De gelaagde stratovulkaan',
-    task:'Zoek de stratovulkaan die opgebouwd is uit afwisselende lagen as en taaie lava.',
-    cam:[7.2,1.9,0],
-    q:'Leg uit hoe de afwisselende lagen as en lava in de doorsnede van de vulkaan zijn ontstaan.',
-    opts:[
-      ['Door opeenvolgende erupties: explosieve asregens wisselen af met uitvloeiende lavastromen die laag voor laag stollen',1,'Helemaal juist! Daarom heet het een stratovulkaan (stratum = laag): afwisselende lagen van vulkanische as, puin en gestolde lava bouwen samen de steile kegel op.'],
-      ['Doordat wind en regen zand en water op de vulkaan hebben geblazen',0,'Nee, de lagen bestaan uit puur vulkanisch materiaal dat door opeenvolgende uitbarstingen is afgezet.'],
-      ['Doordat de vulkaan tijdens een aardbeving in tweeën is gebroken',0,'Nee, de gelaagdheid ontstaat tijdens de opbouw van de vulkaan door talloze erupties over tienduizenden jaren.']
-    ]
-  }
-];
+/* ---------- interactieve speurtochten per scenario ---------- */
+const QUESTS_BY_SCN = {
+  cont: [
+    {
+      target: 'trench',
+      cand: ['trench', 'oc', 'subd', 'mantle'],
+      rtti: 'T1: Toepassen',
+      title: 'Opdracht 1: De diepzeetrog',
+      task: 'Zoek de diepe kloof in de zeebodem precies waar de oceanische plaat naar beneden duikt.',
+      cam: [-1.6, -0.9, 0],
+      q: 'Waarom ligt een diepzeetrog altijd aan de rand van het continent en niet midden op de oceaan?',
+      opts: [
+        ['Omdat de zware oceanische basaltplaat hier onder het lichte continent buigt en de zeebodem mee de diepte in trekt.', 1, 'Klopt! Precies op de kniklijn waar de plaat subduceert ontstaat een kloof van meer dan 10 km diepte.'],
+        ['Omdat rivieren vanaf het continent hier een diepe vallei in de zeebodem hebben uitgesleten.', 0, 'Nee. Een trog ontstaat door subductie (platentektoniek), niet door riviererosie.'],
+        ['Omdat het oceaanwater hier veel kouder en zwaarder is waardoor de bodem inzakt.', 0, 'Nee. De hydrostatische waterdruk is groot, maar de bodem buigt omlaag door de duikende tektonische plaat.']
+      ]
+    },
+    {
+      target: 'subd',
+      cand: ['subd', 'trench', 'oc', 'cc'],
+      rtti: 'R: Reproductie (Weten)',
+      title: 'Opdracht 2: Subductiezone & Aardbevingen',
+      task: 'Zoek de subductiezone: het klemzittende breukvlak tussen de twee platen waar grote spanning wordt opgebouwd.',
+      cam: [0.2, -0.5, 0],
+      q: 'Waarom ontstaan juist langs de subductiezone de krachtigste aardbevingen op aarde?',
+      opts: [
+        ['Doordat de ruwe gesteentelagen van beide platen tijdens het duiken klemhaken; als de spanning te hoog oploopt schiet het breukvlak plotseling los.', 1, 'Uitstekend! De elastische spanning ontlaadt zich in één klap: dit veroorzaakt zware aardbevingen langs de megathrust-zone.'],
+        ['Doordat het magma in de mantel ontploft door te veel zuurstof onder de grond.', 0, 'Nee, aardbevingen ontstaan door plotselinge breukverschuivingen door wrijving tussen twee platen.'],
+        ['Doordat de zeebodem spekglad is en de plaat zonder enige weerstand wegglijdt.', 0, 'Juist het omgekeerde: als er geen wrijving was zou er geen spanning opbouwen en geen aardbeving ontstaan!']
+      ]
+    },
+    {
+      target: 'chamber',
+      cand: ['chamber', 'melting', 'mantle', 'subd'],
+      rtti: 'I: Inzicht',
+      title: 'Opdracht 3: Magmakamer & Smeltzone',
+      task: 'Zoek de ondergrondse magmakamer die gevoed wordt met gesmolten gesteente vanuit de diepe smeltzone.',
+      cam: [7.0, -1.8, 0],
+      q: 'Waarom stijgt het gesmolten magma vanuit de diepte omhoog naar de magmakamer?',
+      opts: [
+        ['Omdat heet gesmolten gesteente uitzet, een lagere dichtheid heeft dan het omringende vaste gesteente en daardoor opdrijft.', 1, 'Uitstekend! Net als een warme luchtbel of een oliedruppel in water drijft het hete, lichtere magma omhoog door de zwaardere continentale korst.'],
+        ['Omdat de zwaartekracht onder de grond omgekeerd werkt en alles omhoog duwt.', 0, 'Nee, de zwaartekracht trekt alles omlaag; het lichtere magma drijft juist op door dichtheidsverschil (drijfvermogen).'],
+        ['Omdat het magma wordt opgezogen door de wind boven de vulkaan.', 0, 'Nee, de opstijgende beweging wordt puur aangedreven door dichtheidsverschillen diep in de aardkorst.']
+      ]
+    },
+    {
+      target: 'volc',
+      cand: ['volc', 'mount', 'conduit', 'chamber'],
+      rtti: 'T2: Toepassen',
+      title: 'Opdracht 4: De gelaagde stratovulkaan',
+      task: 'Zoek de stratovulkaan die opgebouwd is uit afwisselende lagen as en taaie lava.',
+      cam: [7.2, 1.9, 0],
+      q: 'Leg uit hoe de afwisselende lagen as en lava in de doorsnede van de vulkaan zijn ontstaan.',
+      opts: [
+        ['Door opeenvolgende erupties: explosieve asregens wisselen af met uitvloeiende lavastromen die laag voor laag stollen.', 1, 'Helemaal juist! Daarom heet het een stratovulkaan (stratum = laag): afwisselende lagen van vulkanische as, puin en gestolde lava bouwen samen de steile kegel op.'],
+        ['Doordat wind en regen zand en water op de vulkaan hebben geblazen.', 0, 'Nee, de lagen bestaan uit puur vulkanisch materiaal dat door opeenvolgende uitbarstingen is afgezet.'],
+        ['Doordat de vulkaan tijdens een aardbeving in tweeën is gebroken.', 0, 'Nee, de gelaagdheid ontstaat tijdens de opbouw van de vulkaan door talloze erupties over tienduizenden jaren.']
+      ]
+    }
+  ],
 
-const FINAL_SYNTHESIS={
-  q:'Leg in je eigen woorden uit hoe de botsing tussen twee tektonische platen leidt tot zowel een diepzeetrog, accretiewig, zware aardbevingen als explosieve stratovulkanen.',
-  model:'De zware oceanische basaltplaat duikt onder de lichte continentale plaat (subductie), waardoor bij de botslijn een diepe diepzeetrog ontstaat. Het zachte zeebodemsediment wordt afgeschraapt en hoopt zich op als een accretiewig. Tijdens het duiken klemmen de platen vast; als het breukvlak losschiet ontstaat een zware aardbeving. Dieper in de aarde (op 100-150 km diepte) zorgt meegesleurd water voor flux melting in de smeltzone. Het hete, lichte magma stijgt als een traanvormige diapier op naar de magmakamer en breekt via de kraterpijp door in een explosieve stratovulkaan met afwisselende lagen as en lava.'
+  ocean: [
+    {
+      target: 'trench',
+      cand: ['trench', 'oc', 'subd', 'mantle'],
+      rtti: 'T1: Toepassen',
+      title: 'Opdracht 1: De diepzeetrog',
+      task: 'Zoek de diepzeetrog waar de oudste, zwaarste oceanische plaat onder de andere duikt.',
+      cam: [-1.6, -1.2, 0],
+      q: 'Wat bepaalt welke van de twee oceanische platen de diepte in duikt?',
+      opts: [
+        ['De oudste oceanische plaat is het meest afgekoeld, zwaarder en compacter geworden, en duikt daarom onder de jongere plaat.', 1, 'Klopt helemaal! Ouder oceanisch basalt is kouder en compacter (hogere dichtheid) en zinkt daardoor onder de warmere plaat.'],
+        ['De plaat die het snelst beweegt springt altijd over de andere heen.', 0, 'Nee, het is het verschil in dichtheid en gewicht door afkoeling dat bepaalt welke plaat subduceert.'],
+        ['Willekeurig toeval: bij elke aardbeving wisselt het wie er onder duikt.', 0, 'Nee, de zwaardere afgekoelde lithosfeer duikt consistent de mantel in.']
+      ]
+    },
+    {
+      target: 'subd',
+      cand: ['subd', 'trench', 'oc', 'cc'],
+      rtti: 'R: Reproductie (Weten)',
+      title: 'Opdracht 2: Subductie & Aardbevingen',
+      task: 'Zoek het breukvlak (subductiezone) waar beide oceanische platen langs elkaar schuren.',
+      cam: [0.0, -1.0, 0],
+      q: 'Welk groot gevaar ontstaat er als er bij een oceanische subductiezone een zware aardbeving plaatsvindt?',
+      opts: [
+        ['De plotselinge verticale verschuiving van de zeebodem tilt de hele waterkolom op en veroorzaakt een verwoestende tsunami.', 1, 'Uitstekend! De opwaartse schok van de oceaanbodem zet een tsunami in beweging die met wel 800 km/u over de oceaan raast.'],
+        ['Al het oceaanwater stroomt in één keer weg in het binnenste van de aarde.', 0, 'Nee, het water kan niet zomaar verdwijnen in het binnenste van de aarde.'],
+        ['Er ontstaat een permanente orkaan die maandenlang blijft ronddraaien.', 0, 'Nee, een aardbeving verplaatst de lithosfeer en het water, niet rechtstreeks de luchtstromen.']
+      ]
+    },
+    {
+      target: 'volc',
+      cand: ['volc', 'subd', 'oc', 'cc'],
+      rtti: 'I: Inzicht',
+      title: 'Opdracht 3: Vulkanisch eiland (Eilandenboog)',
+      task: 'Zoek het vulkanische eiland dat door onderzeese uitbarstingen boven het zeeniveau is uitgegroeid.',
+      cam: [7.2, 0.4, 0],
+      q: 'Hoe ontstaat een vulkanische eilandenboog (zoals Japan of de Filipijnen)?',
+      opts: [
+        ['Het magma uit de smeltzone stijgt op door de overrijdende oceanische plaat en bouwt vulkanen op tot ze boven de zeespiegel uitsteken.', 1, 'Juist! Als twee oceanische platen botsen, groeien de vulkanen vanaf de zeebodem uit tot een boog van vulkanische eilanden.'],
+        ['Een stuk land breekt af van het continent en blijft drijven op het wateroppervlak.', 0, 'Nee, de eilanden bestaan uit massief gestold vulkanisch gesteente vanaf de zeebodem.'],
+        ['Koraaldieren metselen binnen enkele weken een heel eiland in elkaar.', 0, 'Nee, koralen kunnen riffen vormen, maar het eiland zelf is van vulkanische oorsprong.']
+      ]
+    }
+  ],
+
+  col: [
+    {
+      target: 'mountCol',
+      cand: ['mountCol', 'fossils', 'oc', 'cc'],
+      rtti: 'T1: Toepassen',
+      title: 'Opdracht 1: Het Plooiingsgebergte (Himalaya)',
+      task: 'Zoek het plooiingsgebergte (Himalaya) dat omhoog gestuwd is door de botsing van twee continentale platen.',
+      cam: [1.4, 1.8, 0],
+      q: 'Waarom ontstaat er bij een botsing tussen twee continenten een enorm gebergte, maar géén subductiezone?',
+      opts: [
+        ['Omdat beide continentale platen bestaan uit licht granietgesteente: geen van beide kan zinken in de zware mantel, waardoor de korst verfrommelt en omhoog plooit.', 1, 'Precies goed! Net zoals twee stukken hout op water niet zinken, kunnen twee lichte continenten niet in de mantel zakken en stuwt de korst kilometers hoog op.'],
+        ['Omdat continenten te zwaar zijn en direct naar het binnenste van de aarde zakken.', 0, 'Nee, continentale korst is juist lichter van dichtheid dan de onderliggende mantel.'],
+        ['Omdat continentale platen altijd stoppen met bewegen zodra ze elkaar aanraken.', 0, 'Nee, de drijvende krachten gaan door, waardoor de platen elkaar miljoenen jaren lang blijven samendrukken.']
+      ]
+    },
+    {
+      target: 'fossils',
+      cand: ['fossils', 'mountCol', 'oc', 'mantle'],
+      rtti: 'I: Inzicht',
+      title: 'Opdracht 2: Zeefossielen op bergtoppen',
+      task: 'Zoek de opgetilde voormalige zeebodem met vis- en schelpfossielen bovenop het gebergte.',
+      cam: [-1.0, 1.6, 0],
+      q: 'Hoe kunnen er op de hoogste toppen van de Himalaya (op meer dan 8 km hoogte) fossielen van vissen en schelpen liggen?',
+      opts: [
+        ['Vóór de botsing lag er een oceaan (Tethyszee) tussen de continenten; die zeebodem is samengeperst, versteend tot kalksteen en kilometers hoog opgetild.', 1, 'Fantastisch inzicht! De zeebodem vol zeeleven is versteend en door de gigantische tektonische druk omhoog geduwd tot op de toppen van de Mount Everest.'],
+        ['Vogels hebben duizenden vissen uit de zee naar boven gevlogen en op de toppen achtergelaten.', 0, 'Nee, de fossielen zitten versteend in massieve gesteentelagen (kalksteen) die vroeger de oceaanbodem vormden.'],
+        ['De zeespiegel stond vroeger 9 kilometer hoger waardoor alle bergen onder water stonden.', 0, 'Nee, de zeespiegel is nooit zo hoog geweest; het gesteente zelf is door platentektoniek omhoog gedrukt.']
+      ]
+    },
+    {
+      target: 'oc',
+      cand: ['oc', 'cc', 'mountCol', 'mantle'],
+      rtti: 'R: Reproductie (Weten)',
+      title: 'Opdracht 3: Het botsende continent',
+      task: 'Zoek de continentale plaat (zoals het Indische subcontinent) die met hoge kracht tegen het andere continent botst.',
+      cam: [-6.5, 0.5, 0],
+      q: 'Wat gebeurt er met de beweging van India en Eurazië op dit moment?',
+      opts: [
+        ['De botsing gaat nog steeds door (met ~5 cm per jaar), waardoor de Himalaya nog elk jaar groeit en er zware aardbevingen ontstaan.', 1, 'Klopt helemaal! India schuift nog steeds noordwaarts tegen Eurazië, waardoor de spanning zich continu ophoopt en ontlaadt in aardbevingen.'],
+        ['De platen zijn volledig stilgevallen en bewegen nooit meer.', 0, 'Nee, GPS-satellietmetingen tonen aan dat India nog steeds met 5 cm per jaar naar het noorden schuift.'],
+        ['De platen zijn van richting omgedraaid en drijven nu met grote snelheid uit elkaar.', 0, 'Nee, het is nog steeds een actieve convergente botsingszone.']
+      ]
+    }
+  ],
+
+  div: [
+    {
+      target: 'mor',
+      cand: ['mor', 'upwell', 'newCrust', 'contL'],
+      rtti: 'T1: Toepassen',
+      title: 'Opdracht 1: De Mid-oceanische rug',
+      task: 'Zoek de mid-oceanische rug: de langgerekte onderzeese bergketen waar de platen uit elkaar bewegen.',
+      cam: [1.2, -0.6, 0],
+      q: 'Waarom ligt een mid-oceanische rug hoger dan de omringende diepe zeebodem?',
+      opts: [
+        ['Het gesteente is hier gloeiend heet door opstijgend magma; warm gesteente zet uit, heeft een lagere dichtheid en ligt daardoor als een rug hoger op de mantel.', 1, 'Uitstekend! Naarmate de nieuwe korst wegdrijft van de rug koelt het basalt af, krimpt het en zakt het in naar de diepere oceaanvlakte.'],
+        ['Omdat rivieren vanaf het land hier bergen zand en modder hebben opgestapeld.', 0, 'Nee, een mid-oceanische rug ligt midden op de oceaan en bestaat uit gestold vulkanisch basalt.'],
+        ['Omdat de wind het water hier wegdrukt waardoor de bodem omhoog komt.', 0, 'Nee, de hoogte wordt bepaald door de temperatuur en het drijfvermogen van de jonge korst en lithosfeer.']
+      ]
+    },
+    {
+      target: 'upwell',
+      cand: ['upwell', 'mor', 'newCrust', 'mantle'],
+      rtti: 'I: Inzicht',
+      title: 'Opdracht 2: Opstijgend magma',
+      task: 'Zoek het opstijgende hete magma dat de scheur tussen de platen opvult.',
+      cam: [0.0, -1.8, 0],
+      q: 'Wat gebeurt er diep onder de zeebodem als de platen uit elkaar bewegen?',
+      opts: [
+        ['Doordat de platen uit elkaar trekken ontstaat er ruimte, waardoor heet materiaal uit de aardmantel omhoog komt en smelt tot vloeibaar magma.', 1, 'Heel goed! Doordat de platen uit elkaar wijken kan het gloeiend hete gesteente uit de aardmantel opstijgen en vloeibaar worden.'],
+        ['De zon verwarmt het diepe oceaanwater zo sterk dat het gesteente van de zeebodem smelt.', 0, 'Nee, zonlicht komt niet op de diepe oceaanbodem; de warmte komt diep uit het binnenste van de aarde.'],
+        ['Het zeewater zakt weg in een bodemloze put waardoor de aarde vanzelf leegloopt.', 0, 'Nee, de opening wordt meteen opgevuld met opstijgend magma vanuit de aardmantel.']
+      ]
+    },
+    {
+      target: 'newCrust',
+      cand: ['newCrust', 'mor', 'contL', 'contR'],
+      rtti: 'R: Reproductie (Weten)',
+      title: 'Opdracht 3: Nieuwe zeebodem',
+      task: 'Zoek de nieuw gevormde oceanische korst (zeebodem) die ontstaat doordat het magma stolt.',
+      cam: [3.2, -0.6, 0],
+      q: 'Waarom noemen we een divergente plaatgrens ook wel een "opbouwende" (constructieve) plaatgrens?',
+      opts: [
+        ['Omdat er door stollend magma steeds nieuwe zeebodem (nieuwe aardkorst) bij komt.', 1, 'Precies! Opbouwend (constructief) betekent dat er steeds nieuw korstmateriaal bijkomt op de zeebodem.'],
+        ['Omdat mensen hier grote steden en constructies op de zeebodem bouwen.', 0, 'Nee, "opbouwend" gaat hier over de aarde zelf: er ontstaat nieuwe zeebodem doordat magma stolt.'],
+        ['Omdat er bij deze plaatgrens juist aardkorst verdwijnt en kapot gedrukt wordt.', 0, 'Nee, aardkorst verdwijnt pas wanneer een plaat onder een andere duikt (bij subductie).']
+      ]
+    }
+  ],
+
+  trans: [
+    {
+      target: 'fault',
+      cand: ['fault', 'houses', 'road', 'mantle'],
+      rtti: 'T1: Toepassen',
+      title: 'Opdracht 1: De Transformbreuk',
+      task: 'Zoek de transformbreuk: de breuklijn waar de twee tektonische platen horizontaal langs elkaar glijden.',
+      cam: [0.0, 0.4, 0],
+      q: 'Wat is kenmerkend voor een transformbreuk (zoals de San Andreasbreuk)?',
+      opts: [
+        ['Platen schuiven horizontaal langs elkaar heen: er wordt geen nieuwe korst gevormd en er verdwijnt geen korst in de diepte.', 1, 'Helemaal juist! Daarom heet dit een conservatieve plaatgrens: de hoeveelheid aardkorst blijft gelijk.'],
+        ['De twee platen botsen recht op elkaar waardoor kilometershoge vulkanen ontstaan.', 0, 'Nee, bij een transformbreuk schuiven platen zijwaarts langs elkaar; er is geen subductie en geen vulkanisme.'],
+        ['De oceaanbodem scheurt open en er spuit lava kilometers hoog de lucht in.', 0, 'Nee, dat gebeurt bij divergente grenzen (mid-oceanische ruggen).']
+      ]
+    },
+    {
+      target: 'road',
+      cand: ['road', 'houses', 'fault', 'mantle'],
+      rtti: 'I: Inzicht',
+      title: 'Opdracht 2: Verbroken weg',
+      task: 'Zoek de verbroken en versprongen weg die doormidden is gesneden door de breukbeweging.',
+      cam: [0.0, 0.3, -3.5],
+      q: 'Hoe toont een versprongen weg of hekwerk aan welke kant de platen op bewegen?',
+      opts: [
+        ['Als je op de ene weghelft staat en naar de overkant kijkt, zie je precies naar welke kant (links of rechts) het landschap is verschoven.', 1, 'Uitstekend! Geologen gebruiken versprongen wegen, beekjes en hekwerken in het veld om de richting en snelheid van de breukverschuiving te bepalen.'],
+        ['Niet: wegen breken altijd in willekeurige richtingen door het weer.', 0, 'Nee, de breuklijn verplaatst de hele bodem inclusief het wegdek in de richting van de plaatbeweging.'],
+        ['Doordat de weg altijd loodrecht omhoog de lucht in wordt geschoten.', 0, 'Nee, bij een strike-slipbreuk is de verplaatsing voornamelijk horizontaal langs het aardoppervlak.']
+      ]
+    },
+    {
+      target: 'houses',
+      cand: ['houses', 'road', 'fault', 'mantle'],
+      rtti: 'R: Reproductie (Weten)',
+      title: 'Opdracht 3: Verschuivende dorpen & Aardbevingen',
+      task: 'Zoek de huizen en bebouwing die aan weerszijden van de breuk in tegengestelde richting bewegen.',
+      cam: [-1.2, 0.5, -2.5],
+      q: 'Waarom treden langs de San Andreasbreuk regelmatig zware aardbevingen op?',
+      opts: [
+        ['Door enorme wrijving haken de ruwe breukwanden vast (stick) terwijl de platen doordrukken; als de spanning plots bezwijkt schiet de breuk los (slip).', 1, 'Klopt! Dit stick-slip mechanisme bouwt jarenlang spanning op die in enkele seconden vrijkomt als een hevige aardbeving.'],
+        ['Doordat ondergrondse magmakamers ontploffen onder de huizen.', 0, 'Nee, er is geen vulkanisme langs de transformbreuk; de bevingen zijn puur tektonisch door wrijving.'],
+        ['Doordat het verkeer op de weg te hard rijdt en trillingen veroorzaakt.', 0, 'Nee, verkeer veroorzaakt geen tektonische aardbevingen.']
+      ]
+    }
+  ]
+};
+
+const FINAL_SYNTHESIS_BY_SCN = {
+  cont: {
+    q: 'Leg in je eigen woorden uit hoe de botsing tussen een oceanische en continentale plaat leidt tot een diepzeetrog, zware aardbevingen en explosief vulkanisme.',
+    model: 'De zware oceanische basaltplaat duikt onder de lichte continentale plaat (subductie), waardoor bij de buiging een diepe diepzeetrog ontstaat. Tijdens het duiken klemmen de platen door enorme wrijving vast; als het breukvlak losschiet ontstaat een zware aardbeving. Dieper in de aarde (100–150 km) smelt gesteente in de smeltzone. Het hete, lichte magma stijgt op naar de magmakamer en breekt via de kraterpijp door in een explosieve stratovulkaan met afwisselende lagen as en lava.'
+  },
+  ocean: {
+    q: 'Leg in je eigen woorden uit hoe subductie tussen twee oceanische platen leidt tot een diepzeetrog, tsunami\'s en een vulkanische eilandenboog.',
+    model: 'De oudste en zwaarste oceanische plaat duikt onder de jongere oceanische plaat. Bij de buiging ontstaat een diepe diepzeetrog. Plotselinge verticale bewegingen van het breukvlak kunnen de zeebodem optillen en een gevaarlijke tsunami veroorzaken. In de diepte smelt mantelgesteente; het opstijgende magma bouwt onderzeese vulkanen op die boven water uitgroeien tot een boog van vulkanische eilanden.'
+  },
+  col: {
+    q: 'Leg in je eigen woorden uit hoe de botsing tussen twee continentale platen een hoog plooiingsgebergte vormt en hoe er visfossielen op de toppen terechtkomen.',
+    model: 'Beide continentale platen bestaan uit licht graniet en kunnen niet in de mantel zinken. De tussenliggende oeroceaan sluit volledig. De zeebodem met mariene sedimenten en visfossielen wordt tussen de continenten samengeperst, versteend tot kalksteen en kilometers hoog opgetild tot bovenop het gebergte (zoals de Mount Everest).'
+  },
+  div: {
+    q: 'Leg in je eigen woorden uit hoe bij een mid-oceanische rug nieuwe zeebodem ontstaat en waarom de oceaan steeds breder wordt.',
+    model: 'Doordat twee oceanische platen uit elkaar bewegen, ontstaat er een scheur. Gloeiend heet gesteente uit de aardmantel stijgt omhoog en smelt tot magma. Zodra dit magma in het koude zeewater komt, stolt het direct tot nieuw vulkanisch gesteente (basalt). Hierdoor groeit de zeebodem voortdurend aan en worden de continenten links en rechts steeds verder uit elkaar geduwd.'
+  },
+  trans: {
+    q: 'Leg in je eigen woorden uit hoe een transformbreuk werkt en waarom dit leidt tot verspringende wegen en zware aardbevingen.',
+    model: 'Twee platen schuiven horizontaal langs elkaar heen. Door enorme wrijving zitten de ruwe breukwanden jarenlang muurvast (stick) terwijl de platen doordrukken. Wegen, hekken en huizen vervormen elastisch. Wanneer de spanning plotseling de wrijving overtreft, schiet de breuk in één klap los (slip). Dit veroorzaakt een zware aardbeving en de weg verspringt abrupt.'
+  }
 };
 
 let quest=null;
 
 function startQuest(){
-  if(S.right === 'col' || S.right === 'div' || S.right === 'trans'){
-    const btnCont = document.querySelector('[data-scn="cont"]');
-    if(btnCont) btnCont.click();
-  }
-  quest={i:0,phase:'find',score:0,firstTry:true};
+  const scn = S.right;
+  const list = QUESTS_BY_SCN[scn] || QUESTS_BY_SCN['cont'];
+  quest = { scn, list, i: 0, phase: 'find', score: 0, firstTry: true, curOpts: [] };
   $('bQuest').setAttribute('aria-pressed','true');
   $('app').classList.add('quest-find');
   infoEl.classList.remove('min');
@@ -2772,58 +2973,87 @@ function endQuest(){
 }
 
 function beginQuestStep(){
-  const st=QUESTS[quest.i];
-  quest.firstTry=true;
-  quest.phase='find';
+  const st = quest.list[quest.i];
+  quest.firstTry = true;
+  quest.phase = 'find';
   $('app').classList.add('quest-find');
-  LABS.forEach(L=>L.el.classList.remove('on','miss','right'));
+  LABS.forEach(L => L.el.classList.remove('on','miss','right'));
 
-  // Didactische tijdsynchronisatie: zorg dat de vulkaan/trog al gevormd is
-  if(st.target==='volc'){
-    if(S.p<0.72)seek(0.80*DUR);
-  }else if(st.target==='conduit'){
-    if(S.p<0.60)seek(0.68*DUR);
-  }else if(st.target==='chamber'){
-    if(S.p<0.48)seek(0.56*DUR);
-  }else if(st.target==='melting'){
-    if(S.p<0.36)seek(0.42*DUR);
-  }else if(st.target==='trench'){
-    if(S.p<0.25)seek(0.35*DUR);
+  // Didactische tijdsynchronisatie voor de actieve target:
+  if(st.target === 'volc'){
+    if(S.p < 0.72) seek(0.80 * DUR);
+  } else if(st.target === 'conduit'){
+    if(S.p < 0.60) seek(0.68 * DUR);
+  } else if(st.target === 'chamber'){
+    if(S.p < 0.48) seek(0.56 * DUR);
+  } else if(st.target === 'melting'){
+    if(S.p < 0.36) seek(0.42 * DUR);
+  } else if(st.target === 'trench'){
+    if(S.p < 0.25) seek(0.35 * DUR);
+  } else if(st.target === 'mountCol' || st.target === 'fossils'){
+    if(S.p < 0.45) seek(0.60 * DUR);
+  } else if(st.target === 'newCrust' || st.target === 'mor' || st.target === 'upwell'){
+    if(S.p < 0.30) seek(0.50 * DUR);
+  } else if(st.target === 'houses' || st.target === 'road'){
+    if(S.p < 0.35) seek(0.55 * DUR);
   }
+
+  // Shuffle opties voor deze vraag zodat het juiste antwoord niet altijd A / optie 1 is:
+  const rawOpts = st.opts.map((opt, origIdx) => ({
+    text: opt[0],
+    isRight: opt[1] === 1,
+    feedback: opt[2],
+    origIdx
+  }));
+  for (let k = rawOpts.length - 1; k > 0; k--) {
+    const j = Math.floor(Math.random() * (k + 1));
+    [rawOpts[k], rawOpts[j]] = [rawOpts[j], rawOpts[k]];
+  }
+  quest.curOpts = rawOpts;
+
+  // Shuffle ook de 3D-kandidaatposities (A, B, C, D) zodat het juiste antwoord in 3D niet altijd plek A is:
+  const rawCand = [...st.cand];
+  for (let k = rawCand.length - 1; k > 0; k--) {
+    const j = Math.floor(Math.random() * (k + 1));
+    [rawCand[k], rawCand[j]] = [rawCand[j], rawCand[k]];
+  }
+  quest.curCand = rawCand;
+
   renderQuest();
 }
 
 function renderQuest(){
-  if(!quest)return;
-  const n=QUESTS.length;
-  let progressBars='';
-  for(let k=0;k<n;k++){
-    progressBars+=`<i class="${k<quest.i?'done':(k===quest.i?'cur':'')}"></i>`;
+  if(!quest) return;
+  const n = quest.list.length;
+  let progressBars = '';
+  for(let k = 0; k < n; k++){
+    progressBars += `<i class="${k < quest.i ? 'done' : (k === quest.i ? 'cur' : '')}"></i>`;
   }
 
-  $('infoTag').textContent=quest.phase==='done'?'Speurtocht · Afronding':`Speurtocht · Opdracht ${quest.i+1} van ${n}`;
+  $('infoTag').textContent = quest.phase === 'done' ? 'Speurtocht · Afronding' : `Speurtocht · Opdracht ${quest.i + 1} van ${n}`;
 
-  if(quest.phase==='done'){
-    $('infoTitle').textContent='Goed gedaan!';
-    infoBody.innerHTML=`
+  if(quest.phase === 'done'){
+    const synth = FINAL_SYNTHESIS_BY_SCN[quest.scn] || FINAL_SYNTHESIS_BY_SCN['cont'];
+    $('infoTitle').textContent = 'Goed gedaan!';
+    infoBody.innerHTML = `
       <div class="q-progress">${progressBars}</div>
       <div class="score-box">${quest.score} / ${n}</div>
       <p style="margin:0 0 10px;font-weight:700">vragen in één keer juist beantwoord!</p>
       
       <div class="q-box" style="margin:10px 0">
         <b>Eindvraag · Inzicht &amp; Synthese (I)</b>
-        <p>${FINAL_SYNTHESIS.q}</p>
+        <p>${synth.q}</p>
       </div>
 
       <label class="q-hintline" for="q-reflect">Jouw verklaring (oefening):</label>
-      <textarea id="q-reflect" class="q-textarea" placeholder="Typ hier in je eigen woorden hoe de platen botsen en wat er gebeurt..."></textarea>
+      <textarea id="q-reflect" class="q-textarea" placeholder="Typ hier in je eigen woorden hoe de platen bewegen en wat er gebeurt..."></textarea>
       
       <div class="q-row">
         <button type="button" class="q-btn ghost" id="q-model-btn">Bekijk modelantwoord</button>
       </div>
       <div class="q-feedback good" id="q-model-box" style="display:none">
         <b style="color:#16a34a;display:block;margin-bottom:4px">Modelantwoord (De Geo):</b>
-        <p style="margin:0">${FINAL_SYNTHESIS.model}</p>
+        <p style="margin:0">${synth.model}</p>
       </div>
 
       <div class="q-row" style="margin-top:14px">
@@ -2832,19 +3062,19 @@ function renderQuest(){
       </div>
     `;
 
-    $('q-model-btn').onclick=()=>{
-      $('q-model-box').style.display='block';
+    $('q-model-btn').onclick = () => {
+      $('q-model-box').style.display = 'block';
     };
-    $('q-restart').onclick=startQuest;
-    $('q-quit').onclick=endQuest;
+    $('q-restart').onclick = startQuest;
+    $('q-quit').onclick = endQuest;
     return;
   }
 
-  const st=QUESTS[quest.i];
-  $('infoTitle').textContent=st.title;
+  const st = quest.list[quest.i];
+  $('infoTitle').textContent = st.title;
 
-  if(quest.phase==='find'){
-    infoBody.innerHTML=`
+  if(quest.phase === 'find'){
+    infoBody.innerHTML = `
       <div class="q-progress">${progressBars}</div>
       <span class="rtti-badge">Zoekopdracht · ${st.rtti}</span>
       <p class="q-task">${st.task}</p>
@@ -2853,15 +3083,18 @@ function renderQuest(){
         <button type="button" class="q-link" id="q-abort">Stoppen met de speurtocht</button>
       </div>
     `;
-    $('q-abort').onclick=endQuest;
-  }else if(quest.phase==='question'){
-    infoBody.innerHTML=`
+    $('q-abort').onclick = endQuest;
+  } else if(quest.phase === 'question'){
+    infoBody.innerHTML = `
       <div class="q-progress">${progressBars}</div>
       <span class="rtti-badge">Vraag · ${st.rtti}</span>
       <p class="q-task">${st.q}</p>
       <div class="q-options">
-        ${st.opts.map((opt,idx)=>`
-          <button type="button" class="q-opt" data-opt="${idx}">${opt[0]}</button>
+        ${quest.curOpts.map((opt, idx) => `
+          <button type="button" class="q-opt" data-opt="${idx}">
+            <span class="q-opt-letter">${'ABC'[idx]}</span>
+            <span>${opt.text}</span>
+          </button>
         `).join('')}
       </div>
       <div id="qFeedback"></div>
@@ -2870,79 +3103,80 @@ function renderQuest(){
       </div>
     `;
 
-    $('q-abort').onclick=endQuest;
-    infoBody.querySelectorAll('.q-opt').forEach(btn=>{
-      btn.onclick=()=>answerQuestOption(+btn.dataset.opt,btn);
+    $('q-abort').onclick = endQuest;
+    infoBody.querySelectorAll('.q-opt').forEach(btn => {
+      btn.onclick = () => answerQuestOption(+btn.dataset.opt, btn);
     });
   }
 }
 
-function answerQuestOption(optIdx,btnEl){
-  const st=QUESTS[quest.i];
-  const opt=st.opts[optIdx];
-  const fbContainer=$('qFeedback');
+function answerQuestOption(optIdx, btnEl){
+  const st = quest.list[quest.i];
+  const opt = quest.curOpts[optIdx];
+  const fbContainer = $('qFeedback');
 
-  if(opt[1]===1){
-    if(quest.firstTry)quest.score++;
+  if(opt.isRight){
+    if(quest.firstTry) quest.score++;
     btnEl.classList.add('right');
-    infoBody.querySelectorAll('.q-opt').forEach(b=>b.disabled=true);
+    infoBody.querySelectorAll('.q-opt').forEach(b => b.disabled = true);
 
-    const isLast=quest.i===QUESTS.length-1;
-    fbContainer.innerHTML=`
-      <div class="q-feedback good">${opt[2]}</div>
+    const isLast = quest.i === quest.list.length - 1;
+    fbContainer.innerHTML = `
+      <div class="q-feedback good">${opt.feedback}</div>
       <div class="q-row">
-        <button type="button" class="q-btn" id="qNext">${isLast?'Bekijk eindscore &amp; reflectie':'Volgende opdracht'} →</button>
+        <button type="button" class="q-btn" id="qNext">${isLast ? 'Bekijk eindscore &amp; reflectie' : 'Volgende opdracht'} →</button>
       </div>
     `;
-    $('qNext').onclick=()=>{
+    $('qNext').onclick = () => {
       if(isLast){
-        quest.phase='done';
+        quest.phase = 'done';
         $('app').classList.remove('quest-find');
         renderQuest();
-      }else{
+      } else {
         quest.i++;
         beginQuestStep();
       }
     };
     $('qNext').focus();
-  }else{
-    quest.firstTry=false;
+  } else {
+    quest.firstTry = false;
     btnEl.classList.add('wrong');
-    btnEl.disabled=true;
-    fbContainer.innerHTML=`
-      <div class="q-feedback bad">${opt[2]} Probeer een andere optie!</div>
+    btnEl.disabled = true;
+    fbContainer.innerHTML = `
+      <div class="q-feedback bad">${opt.feedback} Probeer een andere optie!</div>
     `;
   }
 }
 
 function onPinClick(L){
-  if(quest&&quest.phase==='find'){
-    const st=QUESTS[quest.i];
-    if(L.k===st.target){
+  if(quest && quest.phase === 'find'){
+    const st = quest.list[quest.i];
+    if(L.k === st.target){
       L.el.classList.add('right');
       toast('Heel goed gevonden!');
-      quest.phase='question';
+      quest.phase = 'question';
       $('app').classList.remove('quest-find');
 
-      flyToHS(st.cam||L.pos(),11,0.35,0.22);
+      flyToHS(st.cam || L.pos(), 11, 0.35, 0.22);
 
-      setTimeout(()=>{
+      setTimeout(() => {
         L.el.classList.remove('right');
         L.el.classList.add('on');
         renderQuest();
-      },650);
-    }else{
+      }, 650);
+    } else {
       L.el.classList.add('miss');
-      setTimeout(()=>L.el.classList.remove('miss'),1000);
-      const letterIdx=st.cand.indexOf(L.k);
-      const letter=letterIdx>=0?'ABCD'[letterIdx]:'?';
-      const labelName=L.t?L.t():'Onderdeel';
+      setTimeout(() => L.el.classList.remove('miss'), 1000);
+      const candList = quest.curCand || st.cand;
+      const letterIdx = candList.indexOf(L.k);
+      const letter = letterIdx >= 0 ? 'ABCD'[letterIdx] : '?';
+      const labelName = L.t ? L.t() : 'Onderdeel';
       toast(`Letter ${letter} is: ${labelName}. Probeer een andere letter!`);
     }
     return;
   }
 
-  showInfo(L.k,0,true);
+  showInfo(L.k, 0, true);
 }
 
 $('bQuest').addEventListener('click',()=>{
@@ -3130,7 +3364,7 @@ const LABS = [
   { k: 'trench', t: () => S.p >= 0.25 ? 'Diepzeetrog (>10 km diepte)' : 'Diepzeetrog (Trogvorming)', l: 1, vis: () => (S.right === 'cont' || S.right === 'ocean'), pos: () => [CONT_TIP - 0.2, slabTop(CONT_TIP - 0.2) + 0.35, S.zf] },
   { k: 'volc', t: () => S.right === 'cont' ? 'Stratovulkaan (Vulkanische boog)' : 'Vulkanisch eiland', l: 1, vis: () => (S.right === 'cont' || S.right === 'ocean') && S.p >= 0.75, pos: () => [7.2, rightTop(7.2, 0) + 0.35, 0] },
   { k: 'conduit', t: () => 'Kraterpijp & Vertakkingen (Dykes/Sills)', l: 2, vis: () => (S.right === 'cont' || S.right === 'ocean') && S.p >= 0.70 && S.magma && Math.abs(S.zf) < 1.6, pos: () => [7.1, ( -1.8 + rightTop(7.2, S.zf) ) / 2, S.zf] },
-  { k: 'chamber', t: () => 'Magmakamer (Diapier/Pluton)', l: 2, vis: () => (S.right === 'cont' || S.right === 'ocean') && S.p >= 0.55 && S.magma && Math.abs(S.zf) < 2, pos: () => [7.0, -1.8, S.zf] },
+  { k: 'chamber', t: () => 'Magmakamer', l: 2, vis: () => (S.right === 'cont' || S.right === 'ocean') && S.p >= 0.55 && S.magma && Math.abs(S.zf) < 2, pos: () => [7.0, -1.8, S.zf] },
   { k: 'melting', t: () => 'Smeltzone (100–150 km diepte)', l: 2, vis: () => (S.right === 'cont' || S.right === 'ocean') && S.p >= 0.52 && xTip() >= 6.0, pos: () => [Math.min(6.6, xTip() - 0.25), slabTop(Math.min(6.6, xTip() - 0.25)) + 0.08, S.zf] },
   { k: 'mount', t: () => 'Plooiingsgebergte (Andes-type)', l: 2, vis: () => S.right === 'cont' && S.p > 0.25, pos: () => [4.8, rightTop(4.8, S.zf) + 0.15, S.zf] },
   { k: 'mountCol', t: () => 'Plooiingsgebergte (Himalaya)', l: 1, vis: () => S.right === 'col' && S.p > 0.15, pos: () => [1.4, rightTop(1.4, S.zf) + 0.35, S.zf] },
@@ -3145,7 +3379,7 @@ const LABS = [
   { k: 'contR', t: () => 'Oostelijk continent (Drijft oostwaarts)', l: 1, vis: () => S.right === 'div', pos: () => [Math.min(10.2, getDivCoast(S.p) + 1.2), divTop(Math.min(10.2, getDivCoast(S.p) + 1.2), S.zf) + 0.30, S.zf] },
   { k: 'mor', t: () => 'Mid-oceanische rug (MOR)', l: 1, vis: () => S.right === 'div', pos: () => [1.2, divTop(1.2, S.zf) + 0.25, S.zf] },
   { k: 'pillow', t: () => 'Kussenlava (Pillow basalts)', l: 2, vis: () => S.right === 'div' && S.p >= 0.25, pos: () => [0.35, divTop(0.35, S.zf) + 0.18, S.zf] },
-  { k: 'upwell', t: () => 'Opstijgend magma & decompressie (Vult holte)', l: 1, vis: () => S.right === 'div' && S.magma, pos: () => [0.0, -1.8, S.zf] },
+  { k: 'upwell', t: () => 'Opstijgend magma (Vult de scheur op)', l: 1, vis: () => S.right === 'div' && S.magma, pos: () => [0.0, -1.8, S.zf] },
   { k: 'newCrust', t: () => 'Nieuwe oceanische korst (zeebodem)', l: 1, vis: () => S.right === 'div', pos: () => [Math.min(getDivCoast(S.p) - 0.5, 3.2), divTop(Math.min(getDivCoast(S.p) - 0.5, 3.2), S.zf) + 0.22, S.zf] },
   { k: 'smoker', t: () => 'Black smoker (Hydrothermale bron)', l: 2, vis: () => S.right === 'div' && S.p >= 0.45, pos: () => [-0.4, divTop(-0.4, S.zf) + 0.35, S.zf] },
 
@@ -3172,7 +3406,8 @@ LABS.forEach(L=>{
 function updLabels(){
   const w=canvas.clientWidth,h=canvas.clientHeight;
   const inQuest=quest&&quest.phase!=='done';
-  const qCand=inQuest&&quest.phase==='find'?QUESTS[quest.i].cand:null;
+  const curQuestItem=(inQuest&&quest&&quest.list)?quest.list[quest.i]:null;
+  const qCand=inQuest&&quest.phase==='find'?(quest.curCand||(curQuestItem?curQuestItem.cand:null)):null;
 
   let visibleCount=0;
   for(let i=0;i<LABS.length;i++){
@@ -3184,8 +3419,8 @@ function updLabels(){
         L.el.style.display='none';
         continue;
       }
-    }else if(inQuest){
-      if(L.k!==QUESTS[quest.i].target){
+    }else if(inQuest&&curQuestItem){
+      if(L.k!==curQuestItem.target){
         L.el.style.display='none';
         continue;
       }
@@ -3394,7 +3629,7 @@ function captionFor(p){
 }
 function phaseFor(p){
   if (S.right === 'div') {
-    return p < 0.22 ? 'Platen wijken' : p < 0.48 ? 'Decompressiesmelting' : p < 0.75 ? 'Magma & kussenlava' : 'Nieuwe korst gevormd';
+    return p < 0.22 ? 'Platen wijken' : p < 0.48 ? 'Magma stijgt op' : p < 0.75 ? 'Magma & kussenlava' : 'Nieuwe zeebodem gevormd';
   }
   if (S.right === 'trans') {
     return p < 0.22 ? 'Platen glijden' : p < 0.48 ? 'Spanningsopbouw' : p < 0.75 ? 'Elastische buiging' : 'Stick-slip beving';
@@ -3437,7 +3672,7 @@ crustUniforms.u_zf.value=S.zf;
 rebuildTops();rebuildBodies();updMantle();updWater(0.016);updArrows();updVillage();S.dirty=false;
 requestAnimationFrame(frame);
 setTimeout(resize,200);
-window.__subd={S,T,root,camera,renderer,scene,clip,rebuildBodies,rebuildTops,updWater,quake,updQuakes,clearQuakes,events,crustUniforms,seek,DUR,updMagma,xTip,slabTop,rightTop,meltMesh,chamber,conduitMesh,magmaPts};
+window.__subd={S,T,root,camera,renderer,scene,clip,rebuildBodies,rebuildTops,updWater,quake,updQuakes,clearQuakes,events,crustUniforms,seek,DUR,updMagma,xTip,slabTop,rightTop,meltMesh,chamber,conduitMesh,magmaPts,startQuest,endQuest,beginQuestStep,renderQuest,getQuest:()=>quest,QUESTS_BY_SCN};
 })();
 </script>
 </body>
